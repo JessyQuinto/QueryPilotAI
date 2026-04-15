@@ -1,0 +1,31 @@
+{
+  "environment": "dev",
+  "projectEndpoint": "https://msfoundryagents.services.ai.azure.com/api/projects/ProgramaFrontier",
+  "modelDeployment": "gpt-4o-mini",
+  "agentIds": {
+    "sqlPlanner": "asst_6a5CxOl2zBo7ffVs2wrYnmN0",
+    "resultInterpreter": "asst_ESrKHJQViEuLlAONduDSV1NY",
+    "concierge": "asst_LWYNOUePVp0DMFolS09TkDAZ",
+    "visualizationPlanner": "asst_ZYEYVmwK6e2aWRPApenDM4pb"
+  },
+  "agentNames": {
+    "sqlPlanner": "InsightForge SQL Planner",
+    "resultInterpreter": "InsightForge Result Interpreter",
+    "concierge": "InsightForge Concierge",
+    "visualizationPlanner": "InsightForge Visualization Planner"
+  },
+  "memoryStores": {
+    "sqlPlanner": "",
+    "resultInterpreter": "",
+    "concierge": "",
+    "visualizationPlanner": ""
+  },
+  "settings": {
+    "FoundryAgent__ProjectEndpoint": "https://msfoundryagents.services.ai.azure.com/api/projects/ProgramaFrontier",
+    "FoundryAgent__SqlPlannerAgentId": "asst_6a5CxOl2zBo7ffVs2wrYnmN0",
+    "FoundryAgent__ResultInterpreterAgentId": "asst_ESrKHJQViEuLlAONduDSV1NY",
+    "FoundryAgent__ConciergeAgentId": "asst_LWYNOUePVp0DMFolS09TkDAZ",
+    "FoundryAgent__VisualizationPlannerAgentId": "asst_ZYEYVmwK6e2aWRPApenDM4pb"
+  },
+  "generatedAtUtc": "2026-03-22T13:44:38.923809+00:00"
+}

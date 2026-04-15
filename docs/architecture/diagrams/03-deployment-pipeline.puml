@@ -1,0 +1,204 @@
+@startuml InsightForge_DeploymentPipeline
+!theme plain
+skinparam backgroundColor #ffffff
+skinparam stateBorderColor #333333
+skinparam stateBackgroundColor #e3f2fd
+
+' State definitions
+state "1. Preflight" as preflight {
+  state "✓ Validate prerequisites" as pf_validate
+  state "✓ Check commands (az, bicep, etc.)" as pf_commands
+  state "✓ Load config & resolve values" as pf_config
+  state "✓ Connect to Azure subscription" as pf_azure
+  pf_validate --> pf_commands
+  pf_commands --> pf_config
+  pf_config --> pf_azure
+}
+
+state "2. Provision" as provision {
+  state "✓ Deploy Bicep template" as prov_bicep
+  state "✓ Create resource groups" as prov_rg
+  state "✓ Create/configure:" as prov_resources
+  state "  - SQL Server & Database" as prov_sql
+  state "  - Storage Account" as prov_storage
+  state "  - Key Vault" as prov_kv
+  state "  - App Service Plan" as prov_asp
+  state "  - Function App" as prov_func
+  state "  - Web App" as prov_webapp
+  state "  - Application Insights" as prov_ai
+  state "✓ Capture infrastructure outputs" as prov_outputs
+  prov_bicep --> prov_rg
+  prov_rg --> prov_resources
+  prov_resources --> prov_sql
+  prov_sql --> prov_storage
+  prov_storage --> prov_kv
+  prov_kv --> prov_asp
+  prov_asp --> prov_func
+  prov_func --> prov_webapp
+  prov_webapp --> prov_ai
+  prov_ai --> prov_outputs
+}
+
+state "3. Foundry Setup" as foundry {
+  state "✓ (Optional) Create Azure AI Foundry resource" as found_create
+  state "✓ Create projects in Foundry" as found_projects
+  state "✓ Create Foundry agents:" as found_agents
+  state "  - SQL Planner Agent" as found_sql_planner
+  state "  - Result Interpreter Agent" as found_result
+  state "  - Concierge Agent" as found_concierge
+  state "✓ Store agent IDs in Key Vault" as found_secrets
+  found_create --> found_projects
+  found_projects --> found_agents
+  found_agents --> found_sql_planner
+  found_sql_planner --> found_result
+  found_result --> found_concierge
+  found_concierge --> found_secrets
+}
+
+state "4. Configure" as configure {
+  state "✓ Create/update Key Vault secrets:" as conf_secrets
+  state "  - SQL connection strings" as conf_sql
+  state "  - Azure OpenAI keys & endpoints" as conf_aoai
+  state "  - Content Safety keys" as conf_safety
+  state "  - Foundry agent IDs" as conf_foundry
+  state "  - Storage connection strings" as conf_storage
+  state "✓ Set App Configuration values" as conf_appconfig
+  conf_secrets --> conf_sql
+  conf_sql --> conf_aoai
+  conf_aoai --> conf_safety
+  conf_safety --> conf_foundry
+  conf_foundry --> conf_storage
+  conf_storage --> conf_appconfig
+}
+
+state "5. Database" as database {
+  state "✓ Run SQL schema scripts:" as db_schema
+  state "  - 001_tables.sql" as db_t1
+  state "  - 002_relationships.sql" as db_t2
+  state "  - 003_views.sql" as db_t3
+  state "  - 004_security.sql" as db_t4
+  state "✓ Run seed scripts:" as db_seed
+  state "  - 001_seed_reference.sql" as db_s1
+  state "  - 002_seed_transactions.sql" as db_s2
+  state "  - 003_seed_audit.sql" as db_s3
+  state "✓ Verify schema & data integrity" as db_verify
+  db_schema --> db_t1
+  db_t1 --> db_t2
+  db_t2 --> db_t3
+  db_t3 --> db_t4
+  db_t4 --> db_seed
+  db_seed --> db_s1
+  db_s1 --> db_s2
+  db_s2 --> db_s3
+  db_s3 --> db_verify
+}
+
+state "6. Deploy API" as deploy_api {
+  state "✓ Build backend (.NET 8)" as api_build
+  state "✓ Publish Azure Functions" as api_publish
+  state "✓ Update function app settings" as api_settings
+  state "✓ Verify Function endpoints" as api_verify
+  api_build --> api_publish
+  api_publish --> api_settings
+  api_settings --> api_verify
+}
+
+state "7. Deploy Web" as deploy_web {
+  state "✓ Build frontend (Next.js)" as web_build
+  state "✓ Create deployment package (ZIP)" as web_package
+  state "✓ Deploy to Web App" as web_deploy
+  state "✓ Configure app settings (Azure AD, API endpoints)" as web_config
+  state "✓ Verify web app health" as web_verify
+  web_build --> web_package
+  web_package --> web_deploy
+  web_deploy --> web_config
+  web_config --> web_verify
+}
+
+state "8. Verify" as verify {
+  state "✓ Health check endpoints" as verify_health
+  state "✓ Test authentication flow" as verify_auth
+  state "✓ Test API connectivity" as verify_api
+  state "✓ Test database connectivity" as verify_db
+  state "✓ Verify Application Insights telemetry" as verify_telemetry
+  state "✓ Generate deployment report" as verify_report
+  verify_health --> verify_auth
+  verify_auth --> verify_api
+  verify_api --> verify_db
+  verify_db --> verify_telemetry
+  verify_telemetry --> verify_report
+}
+
+state "✅ Deployment Complete" as complete {
+  state "🎉 All systems operational"
+}
+
+state "❌ Deployment Failed" as failed {
+  state "📋 Review error logs & state"
+  state "🔄 Use -ResumeFrom to retry from last successful phase"
+}
+
+preflight --> provision: success
+provision --> foundry: success
+foundry --> configure: success
+configure --> database: success
+database --> deploy_api: success
+deploy_api --> deploy_web: success
+deploy_web --> verify: success
+verify --> complete: success
+
+preflight --> failed: error
+provision --> failed: error
+foundry --> failed: error
+configure --> failed: error
+database --> failed: error
+deploy_api --> failed: error
+deploy_web --> failed: error
+verify --> failed: error
+
+note top of preflight
+  Validates environment & prerequisites
+  Fails early if CLI tools missing
+end note
+
+note top of provision
+  Deploys all Azure infrastructure via Bicep
+  Stores outputs in deployment-state.json
+end note
+
+note top of foundry
+  Sets up optional Foundry agents
+  Can be skipped in some configurations
+end note
+
+note top of configure
+  Populates Key Vault & App Configuration
+  Creates runtime secrets & credentials
+end note
+
+note top of database
+  Initializes SQL schema & reference data
+  Sets up security policies & views
+end note
+
+note top of deploy_api
+  Compiles & publishes .NET Functions
+  Creates HTTP endpoints for queries
+end note
+
+note top of deploy_web
+  Builds Next.js production bundle
+  Deploys to Azure Web App
+end note
+
+note top of verify
+  Smoke tests all integrations
+  Confirms end-to-end functionality
+end note
+
+note bottom of failed
+  Use -ResumeFrom <Phase> to continue from last successful phase
+  Example: .\Invoke-FullDeployment.ps1 -ConfigPath .\Deploy.Configuration.psd1 -ResumeFrom Database
+end note
+
+@enduml

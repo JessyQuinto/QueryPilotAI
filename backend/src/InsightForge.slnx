@@ -1,0 +1,9 @@
+<Solution>
+  <Project Path="Core.Application/Core.Application.csproj" />
+  <Project Path="Core.Domain/Core.Domain.csproj" />
+  <Project Path="Functions.Api/Functions.Api.csproj" />
+  <Project Path="Infrastructure.AzureOpenAI/Infrastructure.AzureOpenAI.csproj" />
+  <Project Path="Infrastructure.Observability/Infrastructure.Observability.csproj" />
+  <Project Path="Infrastructure.Security/Infrastructure.Security.csproj" />
+  <Project Path="Infrastructure.Sql/Infrastructure.Sql.csproj" />
+</Solution>

@@ -1,0 +1,64 @@
+### Frontend (Next.js)
+frontend/.next/
+frontend/node_modules/
+frontend/out/
+
+### .NET / C#
+**/bin/
+**/obj/
+*.user
+*.rsuser
+*.suo
+
+### Azure Functions local
+**/local.settings.json
+**/local.settings.*.json
+!**/local.settings.example.json
+**/bin/output/
+
+### Local environments and secrets
+.env
+.env.*
+!.env.example
+!.env.local.example
+
+### VS Code / IDE
+
+!.vscode/settings.json
+!.vscode/extensions.json
+
+### OS files
+.DS_Store
+Thumbs.db
+
+### Azurite local storage
+.azurite/
+__azurite_db_*.json
+__blobstorage__/
+__queuestorage__/
+
+### Local SDK and package caches
+.nuget/
+.dotnet/
+.runlogs/
+
+### One-off scripts and credentials
+payload.json
+*.pyc
+
+### Logs
+.logs/
+
+### Deployment local state and generated artifacts
+deploy/Deploy.Configuration.psd1
+deploy/.state/
+deploy/artifacts/
+**/deploy/artifacts/
+artifacts/functions-publish/
+artifacts/functions-publish.zip
+
+### Local ad-hoc outputs
+build-output.txt
+
+### Generated infrastructure output
+infra/bicep/main.json

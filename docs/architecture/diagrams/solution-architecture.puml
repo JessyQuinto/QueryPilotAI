@@ -1,0 +1,56 @@
+@startuml
+!includeurl https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+title InsightForge AI - C4 Container Diagram
+
+LAYOUT_WITH_LEGEND()
+
+Person(businessUser, "Business User", "Formula preguntas de negocio y revisa insights explicables.")
+Person(fraudAnalyst, "Fraud Analyst", "Explora patrones de fraude y valida hallazgos.")
+Person(approver, "Approver", "Aprueba consultas sensibles o de mayor riesgo.")
+Person(admin, "Admin", "Opera la plataforma y monitorea salud y trazabilidad.")
+
+System_Ext(openAi, "Azure OpenAI", "Descomposición de intención, generación de SQL y resumen ejecutivo.")
+System_Ext(contentSafety, "Azure AI Content Safety", "Evaluación de abuso, jailbreak y contenido riesgoso.")
+System_Ext(appInsights, "Application Insights + Azure Monitor", "Trazas, métricas, alertas y seguimiento operativo.")
+System_Ext(keyVault, "Azure Key Vault", "Gestión de secretos, endpoints y credenciales.")
+
+System_Boundary(insightForge, "InsightForge AI") {
+  Container(frontend, "Fraud Analytics Web App", "Next.js / React / TypeScript", "Interfaz para captura de preguntas, panel de transparencia, aprobación y resultados.")
+
+  Container(api, "Query Intake API", "Azure Functions Isolated Worker (.NET 8)", "Recibe solicitudes HTTP, expone estado y coordina el inicio del procesamiento gobernado.")
+
+  Container(orchestrator, "Governed Analytics Workflow", "Durable Functions", "Orquesta safety, parsing, SQL, validación, aprobación, ejecución, resumen y auditoría.")
+
+  Container(policyEngine, "Policy and Safety Layer", ".NET services", "Aplica prompt safety, allowlists, reglas SQL, scoring de riesgo y decisión de aprobación.")
+
+  ContainerDb(sqlDb, "Fraud Analytics Database", "Azure SQL Database", "Tablas core de fraude, vistas certificadas, auditoría y aprobaciones.")
+}
+
+Rel(businessUser, frontend, "Consulta métricas e insights", "HTTPS")
+Rel(fraudAnalyst, frontend, "Formula preguntas analíticas y revisa SQL validado", "HTTPS")
+Rel(approver, frontend, "Aprueba o rechaza consultas sensibles", "HTTPS")
+Rel(admin, frontend, "Consulta telemetría y trazabilidad operativa", "HTTPS")
+
+Rel(frontend, api, "POST /api/query\nGET estado y auditoría\nPOST aprobación", "JSON/HTTPS")
+Rel(api, orchestrator, "Inicia y consulta instancias", "Durable Functions")
+Rel(orchestrator, policyEngine, "Evalúa safety, política SQL y riesgo", "In-process")
+Rel(orchestrator, sqlDb, "Lee vistas certificadas, guarda auditoría y ejecuta SELECT validado", "SQL/TDS")
+Rel(orchestrator, openAi, "Parsing de intención, SQL restringido y resumen ejecutivo", "Azure OpenAI API")
+Rel(policyEngine, contentSafety, "Analiza prompts y señales de abuso", "REST API")
+Rel(api, keyVault, "Resuelve secretos y configuración", "Managed Identity")
+Rel(orchestrator, appInsights, "Emite trazas, métricas y eventos de auditoría", "Telemetry SDK")
+Rel(api, appInsights, "Registra requests, errores y correlación", "Telemetry SDK")
+
+UpdateElementStyle(frontend, $bgColor="#124E66", $fontColor="white", $borderColor="#0F3D4F")
+UpdateElementStyle(api, $bgColor="#2F6B7A", $fontColor="white", $borderColor="#224B56")
+UpdateElementStyle(orchestrator, $bgColor="#3B8EA5", $fontColor="white", $borderColor="#2C6B7D")
+UpdateElementStyle(policyEngine, $bgColor="#D97D54", $fontColor="white", $borderColor="#9B5739")
+UpdateElementStyle(sqlDb, $bgColor="#386641", $fontColor="white", $borderColor="#27472D")
+UpdateElementStyle(openAi, $bgColor="#6D597A", $fontColor="white", $borderColor="#4D3E56")
+UpdateElementStyle(contentSafety, $bgColor="#B56576", $fontColor="white", $borderColor="#874958")
+UpdateElementStyle(appInsights, $bgColor="#5A7D9A", $fontColor="white", $borderColor="#41596F")
+UpdateElementStyle(keyVault, $bgColor="#7C6A0A", $fontColor="white", $borderColor="#5A4C07")
+
+SHOW_LEGEND()
+@enduml

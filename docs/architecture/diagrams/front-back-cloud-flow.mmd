@@ -1,0 +1,108 @@
+%% QueryPilotAI - Frontend, Backend, Cloud Architecture
+flowchart LR
+  subgraph FE[Frontend - Next.js + React]
+    U[Usuario / Fraud Analyst]
+    MSAL[MSAL Wrapper y Entra ID]
+    CHAT[UnifiedChat UI]
+    APIHOOK[useApi con JWT]
+    U --> MSAL --> CHAT --> APIHOOK
+  end
+
+  subgraph BE[Backend - Azure Functions .NET 8]
+    JWT[JwtValidationMiddleware]
+    QI[POST /api/query]
+    ST[GET /api/orchestrations/{instanceId}]
+    AP[POST /api/orchestrations/{instanceId}/approve]
+    ORCH[FraudInsightOrchestrator]
+
+    A1[AnalyzePromptSafetyActivity]
+    A2[GetRecentTurnsActivity]
+    A3[ExtractSchemaActivity y Cache]
+    A4[PlanSqlActivity con Foundry SQL Planner]
+    A5[ValidateSqlPolicyActivity]
+    A6[ExecuteSqlActivity]
+    A7[InterpretResultsActivity con Foundry Interpreter]
+    A8[SaveAuditTrailActivity]
+
+    QI --> ORCH
+    ORCH --> A1 --> A2 --> A3 --> A4 --> A5
+    A5 -->|Sin aprobacion| A6 --> A7 --> A8
+    A5 -->|Con aprobacion| AP --> ORCH
+  end
+
+  subgraph CLOUD[Cloud - Azure]
+    FAPP[Azure Function App]
+    DTF[Durable Task Runtime]
+    AIF[Azure AI Foundry Agents]
+    SQLDB[(User DB: Azure SQL/PostgreSQL/MySQL)]
+    APPDB[(Azure SQL App Metadata y Audit)]
+    APPINS[Application Insights]
+    LOG[Log Analytics]
+    KV[Key Vault]
+    STO[Storage Account]
+    CS[Content Safety Resource]
+  end
+
+  APIHOOK -->|HTTP + Bearer JWT| JWT
+  APIHOOK --> ST
+  QI --> FAPP
+  ORCH --> DTF
+  ORCH --> AIF
+  ORCH --> SQLDB
+  ORCH --> APPDB
+  BE --> APPINS --> LOG
+  FAPP --> STO
+  FAPP --> KV
+  CLOUD -.endpoint configurado.-> CS
+
+%% QueryPilotAI - Individual Request Flow with Approval Branch
+---
+sequenceDiagram
+  autonumber
+  actor User as Usuario
+  participant FE as Frontend UnifiedChat
+  participant AUTH as Entra ID MSAL
+  participant API as QueryIntakeFunction
+  participant ORCH as FraudInsightOrchestrator
+  participant SAFE as AnalyzePromptSafety
+  participant FDR as Foundry Agents
+  participant POL as SqlPolicyEngine
+  participant DB as User Database
+  participant APPDB as App SQL Audit
+  participant APR as Approver
+
+  User->>AUTH: Login
+  AUTH-->>FE: JWT
+
+  User->>FE: Pregunta analitica
+  FE->>API: POST /api/query
+  API->>ORCH: Schedule instance
+  API-->>FE: instanceId
+
+  loop Poll estado
+    FE->>API: GET /api/orchestrations/{instanceId}
+    API-->>FE: runtimeStatus y customStatus
+  end
+
+  ORCH->>SAFE: Evaluar prompt
+  alt Bloqueado
+    SAFE-->>ORCH: IsSafe = false
+    ORCH->>APPDB: SaveAudit(Blocked)
+    ORCH-->>FE: Estado Blocked
+  else Permitido
+    SAFE-->>ORCH: IsSafe = true
+    ORCH->>APPDB: Contexto de sesion y cache schema
+    ORCH->>FDR: Concierge + SQL Planner
+    ORCH->>POL: Validate SQL
+    alt Requiere aprobacion
+      ORCH-->>FE: PendingApproval
+      FE->>APR: Solicitar decision
+      APR-->>FE: Approved o Rejected
+      FE->>API: POST /api/orchestrations/{instanceId}/approve
+      API->>ORCH: RaiseEvent(ApprovalEvent)
+    end
+    ORCH->>DB: Execute SQL
+    ORCH->>FDR: Interpret results
+    ORCH->>APPDB: SaveTurn y SaveAudit(Completed)
+    ORCH-->>FE: InsightResponse Completed
+  end

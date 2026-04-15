@@ -1,0 +1,62 @@
+@startuml platform-flow
+title InsightForge AI - Platform Flow
+
+skinparam backgroundColor white
+skinparam shadowing false
+skinparam activity {
+  BackgroundColor #F7FAFC
+  BorderColor #2D3748
+  FontColor #1A202C
+  DiamondBackgroundColor #FFF4E5
+  DiamondBorderColor #C05621
+  StartColor #2F855A
+  EndColor #2D3748
+  BarColor #2B6CB0
+}
+
+start
+
+:Usuario envía pregunta desde la Web App;
+:Query Intake API registra requestId y contexto de usuario;
+:Durable Workflow inicia procesamiento gobernado;
+
+:Prompt Safety analiza abuso, jailbreak y contenido riesgoso;
+if (Prompt seguro?) then (No)
+  :Bloquear solicitud;
+  :Persistir auditoría y telemetría de bloqueo;
+  :Devolver estado Blocked con motivo;
+  stop
+endif
+
+:Parsear intención analítica estructurada;
+:Resolver contexto semántico y vistas certificadas;
+:Generar SQL restringido;
+:Aplicar política SQL y score de riesgo;
+
+if (SQL válido?) then (No)
+  :Bloquear consulta generada;
+  :Registrar razones de validación fallida;
+  :Responder con estado Blocked y advertencias;
+  stop
+endif
+
+if (Requiere aprobación?) then (Sí)
+  :Crear solicitud de aprobación;
+  :Notificar a approver y dejar estado PendingApproval;
+
+  if (Aprobado?) then (No)
+    :Marcar solicitud como Rejected o TimedOut;
+    :Persistir auditoría y telemetría;
+    :Responder sin ejecutar SQL;
+    stop
+  endif
+endif
+
+:Ejecutar SELECT validado sobre Azure SQL;
+:Construir result preview y artefactos de auditoría;
+:Generar resumen ejecutivo a partir de resultados;
+:Persistir auditoría final y trazas operativas;
+:Responder estado Completed con SQL, findings y preview;
+
+stop
+@enduml

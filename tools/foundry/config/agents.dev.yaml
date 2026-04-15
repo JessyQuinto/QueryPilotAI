@@ -1,0 +1,56 @@
+environment: dev
+projectEndpoint: "https://msfoundryagents.services.ai.azure.com/api/projects/ProgramaFrontier"
+modelDeployment: "gpt-4o-mini"
+
+agents:
+  - key: sqlPlanner
+    name: "InsightForge SQL Planner"
+    instructionsFile: "tools/foundry/templates/instructions/sql-planner.md"
+    backendSetting: "FoundryAgent__SqlPlannerAgentId"
+    idSourceEnvVar: "FOUNDRY_SQL_PLANNER_AGENT_ID"
+    memory:
+      enabled: false
+      storeName: ""
+    tags:
+      - "insightforge"
+      - "fraud"
+      - "sql-planner"
+
+  - key: resultInterpreter
+    name: "InsightForge Result Interpreter"
+    instructionsFile: "tools/foundry/templates/instructions/result-interpreter.md"
+    backendSetting: "FoundryAgent__ResultInterpreterAgentId"
+    idSourceEnvVar: "FOUNDRY_RESULT_INTERPRETER_AGENT_ID"
+    memory:
+      enabled: false
+      storeName: ""
+    tags:
+      - "insightforge"
+      - "fraud"
+      - "result-interpreter"
+
+  - key: concierge
+    name: "InsightForge Concierge"
+    instructionsFile: "tools/foundry/templates/instructions/concierge.md"
+    backendSetting: "FoundryAgent__ConciergeAgentId"
+    idSourceEnvVar: "FOUNDRY_CONCIERGE_AGENT_ID"
+    memory:
+      enabled: false
+      storeName: ""
+    tags:
+      - "insightforge"
+      - "fraud"
+      - "concierge"
+
+  - key: visualizationPlanner
+    name: "InsightForge Visualization Planner"
+    instructionsFile: "tools/foundry/templates/instructions/visualization-planner.md"
+    backendSetting: "FoundryAgent__VisualizationPlannerAgentId"
+    idSourceEnvVar: "FOUNDRY_VISUALIZATION_PLANNER_AGENT_ID"
+    memory:
+      enabled: false
+      storeName: ""
+    tags:
+      - "insightforge"
+      - "fraud"
+      - "visualization-planner"

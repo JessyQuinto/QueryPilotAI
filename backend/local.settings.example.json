@@ -1,0 +1,21 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
+    "DatabaseConnectionString": "Server=tcp:<server>.database.windows.net,1433;Initial Catalog=<db>;Encrypt=True;TrustServerCertificate=False;Authentication=Active Directory Default;",
+    "AzureOpenAI__Endpoint": "https://<resource>.openai.azure.com/",
+    "AzureOpenAI__Deployment": "<deployment-name>",
+    "AzureOpenAI__ApiKey": "<api-key>",
+    "ContentSafety__Endpoint": "https://<resource>.cognitiveservices.azure.com/",
+    "FoundryAgent__ProjectEndpoint": "https://<resource>.services.ai.azure.com/api/projects/<project-name>",
+    "FoundryAgent__TenantId": "<tenant-id>",
+    "FoundryAgent__SqlPlannerAgentRef": "<sql-planner-agent-ref>",
+    "FoundryAgent__ResultInterpreterAgentRef": "<result-interpreter-agent-ref>",
+    "FoundryAgent__ConciergeAgentRef": "<concierge-agent-ref>",
+    "Auth__AuthorityHost": "https://login.microsoftonline.com",
+    "Auth__ClientId": "439a8182-8c80-49ce-8dc7-703af41c724c",
+    "Auth__AllowedAudiences": "439a8182-8c80-49ce-8dc7-703af41c724c",
+    "SemanticKernel__EnableDemoEndpoint": "false"
+  }
+}

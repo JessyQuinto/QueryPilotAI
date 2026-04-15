@@ -1,0 +1,14 @@
+{
+  "version": "2.0",
+  "logging": {
+    "logLevel": {
+      "Azure.Data.Tables": "Error"
+    },
+    "applicationInsights": {
+      "samplingSettings": {
+        "isEnabled": true,
+        "excludedTypes": "Request"
+      }
+    }
+  }
+}

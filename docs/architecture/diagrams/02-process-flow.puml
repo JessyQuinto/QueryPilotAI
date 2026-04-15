@@ -1,0 +1,119 @@
+@startuml InsightForge_ProcessFlow
+!theme plain
+skinparam backgroundColor #ffffff
+skinparam sequenceArrowColor #333333
+skinparam actorBackgroundColor #f0f0f0
+
+actor User as user
+participant "Frontend\n(Next.js)" as frontend
+participant "Query Intake\nFunction" as intake
+participant "Fraud Insight\nOrchestrator" as orchestrator
+participant "Azure AI\nContent Safety" as safety
+participant "Azure OpenAI\n(Intent)" as intent_ai
+participant "Semantic\nResolver" as semantic
+participant "Azure OpenAI\n(SQL Gen)" as sql_ai
+participant "SQL Policy\nEngine" as policy
+participant "Azure SQL\nDatabase" as sqldb
+participant "Azure OpenAI\n(Summary)" as summary_ai
+participant "Audit\nLogger" as audit
+
+user -> frontend: 1. Ask Question\n(Natural Language)
+activate frontend
+
+frontend -> frontend: 2. Authenticate\n(Entra ID Token)
+
+frontend -> intake: 3. POST /query\n{question, userId, role}
+activate intake
+
+intake -> orchestrator: 4. Start Orchestration\n(Durable Functions)
+activate orchestrator
+
+orchestrator -> safety: 5. Analyze Prompt\nfor Abuse/Jailbreak
+activate safety
+safety --> orchestrator: Safety Score
+deactivate safety
+
+alt Safety Check Failed
+  orchestrator --> frontend: ❌ Blocked\n(Reason)
+  frontend --> user: ⚠️ Query Rejected
+else Safety Passed
+  orchestrator -> intent_ai: 6. Decompose\nAnalytical Intent
+  activate intent_ai
+  intent_ai --> orchestrator: AnalyticalIntent\n{domain, type, metric, ...}
+  deactivate intent_ai
+
+  orchestrator -> semantic: 7. Resolve Semantic\nContext\n(Ground to Vistas)
+  activate semantic
+  semantic -> sqldb: Query System Catalog
+  activate sqldb
+  sqldb --> semantic: Available Objects
+  deactivate sqldb
+  semantic --> orchestrator: Grounded Context
+  deactivate semantic
+
+  orchestrator -> sql_ai: 8. Generate SQL\n(with Constraints)
+  activate sql_ai
+  sql_ai --> orchestrator: Preliminary SQL
+  deactivate sql_ai
+
+  orchestrator -> policy: 9. Validate SQL\nPolicy
+  activate policy
+  policy -> policy: • Check: SELECT only\n• Check: Allowlist\n• Check: Complexity\n• Calculate: Risk Score
+  policy --> orchestrator: SqlValidationResult\n{isValid, riskLevel, requiresApproval}
+  deactivate policy
+
+  alt SQL Invalid
+    orchestrator -> sql_ai: 9b. Regenerate\nwith Feedback
+    activate sql_ai
+    sql_ai --> orchestrator: Corrected SQL
+    deactivate sql_ai
+    orchestrator -> policy: 9c. Revalidate
+    activate policy
+    policy --> orchestrator: SqlValidationResult
+    deactivate policy
+  end
+
+  alt Risk Level = High
+    orchestrator -> frontend: 10. Request Approval
+    frontend -> user: 🔔 Approval Required\n(Shows Intent + SQL)
+    user -> frontend: Approve / Reject
+    frontend -> orchestrator: Approval Decision
+  end
+
+  alt Approved or Low Risk
+    orchestrator -> sqldb: 11. Execute SQL\n(SELECT only)
+    activate sqldb
+    sqldb --> orchestrator: Result Set
+    deactivate sqldb
+
+    orchestrator -> summary_ai: 12. Generate\nExecutive Summary
+    activate summary_ai
+    summary_ai --> orchestrator: InsightResponse\n{findings, warnings, metrics}
+    deactivate summary_ai
+
+    orchestrator -> audit: 13. Persist Audit\nLog & Telemetry
+    activate audit
+    audit -> sqldb: Write to Audit Tables
+    audit --> orchestrator: ✓ Logged
+    deactivate audit
+
+    orchestrator --> intake: Response
+    intake --> frontend: 14. Return Insight
+    frontend --> user: ✅ Executive Summary\n+ SQL + Trace + Approval Info
+  else Rejected or Validation Failed
+    orchestrator --> frontend: ❌ Request Rejected/Failed
+    frontend --> user: ⚠️ Error Explanation
+  end
+end
+
+deactivate orchestrator
+deactivate intake
+deactivate frontend
+
+note over orchestrator
+  Duration: ~2-5 seconds (typical)
+  All activities logged with requestId
+  Full trace in Application Insights
+end note
+
+@enduml

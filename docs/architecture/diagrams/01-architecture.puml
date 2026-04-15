@@ -1,0 +1,133 @@
+@startuml InsightForge_Architecture
+!theme plain
+skinparam backgroundColor #ffffff
+skinparam classBackgroundColor #f0f0f0
+skinparam classBorderColor #333333
+
+package "Frontend Layer" {
+    component "Next.js UI\n(React + TypeScript)" as UI
+    component "QueryComposer" as QC
+    component "InsightPanel" as IP
+    component "SqlTracePanel" as STP
+    component "ApprovalBanner" as AB
+    component "AuditDrawer" as AD
+    component "OpsDashboard" as OD
+}
+
+package "Authentication & Identity" {
+    component "Microsoft Entra ID\n(Azure AD)" as ENTRA
+}
+
+package "Backend Layer (Azure Functions Isolated)" {
+    component "QueryIntakeFunction" as QIF
+    component "FraudInsightOrchestrator\n(Durable Functions)" as ORQ {
+        component "AnalyzePromptSafetyActivity" as APS
+        component "DecomposeIntentActivity" as DIA
+        component "ResolveSemanticContextActivity" as RSC
+        component "GenerateSqlActivity" as GSA
+        component "ValidateSqlPolicyActivity" as VSP {
+            component "SqlPolicyEngine" as SPE
+        }
+        component "SubmitApprovalActivity" as SAA
+        component "ExecuteSqlActivity" as ESA
+        component "SummarizeInsightActivity" as SIA
+        component "PersistAuditActivity" as PAA
+    }
+}
+
+package "AI & Safety Layer" {
+    component "Azure OpenAI\n(gpt-4o-mini)" as AOAI
+    component "Azure AI Content Safety" as AICS
+}
+
+package "Data Layer" {
+    database "Azure SQL Database" as SQLDB {
+        component "Fraud Core Tables" as FCT
+        component "Certified Vistas" as CV
+        component "Audit Tables" as AT
+        component "Security Policies" as SP
+    }
+}
+
+package "Infrastructure Layer" {
+    component "Azure Key Vault\n(Secrets)" as KV
+    component "Azure Storage\n(Logs & State)" as STOR
+    component "Application Insights\n(Telemetry)" as AI
+}
+
+package "Observability" {
+    component "Azure Monitor" as AM
+    component "Log Analytics\nWorkspace" as LAW
+}
+
+' Connections
+UI -(0- QC
+UI -(0- IP
+UI -(0- STP
+UI -(0- AB
+UI -(0- AD
+UI -(0- OD
+
+UI --> ENTRA: "Authenticate"
+UI --> QIF: "POST /api/query"
+
+QIF --> ENTRA: "Verify Token"
+QIF --> ORQ: "Start Orchestration"
+
+ORQ --> APS
+APS --> AICS: "Analyze Prompt Safety"
+
+ORQ --> DIA
+DIA --> AOAI: "Decompose Intent"
+
+ORQ --> RSC
+RSC --> SQLDB: "Query Vistas"
+
+ORQ --> GSA
+GSA --> AOAI: "Generate SQL"
+
+ORQ --> VSP
+VSP --> SPE: "Apply Policies"
+SPE --> SQLDB: "Validate"
+
+ORQ --> SAA
+SAA --> UI: "Approval Request (if needed)"
+
+ORQ --> ESA
+ESA --> SQLDB: "Execute SELECT"
+
+ORQ --> SIA
+SIA --> AOAI: "Summarize Results"
+
+ORQ --> PAA
+PAA --> SQLDB: "Persist Audit Log"
+
+ORQ --> QIF: "Return Response"
+QIF --> UI: "Insight Response"
+
+ORQ --> AI: "emit Telemetry"
+AI --> AM: "Forward Metrics"
+AI --> LAW: "Forward Logs"
+
+ORQ -.-> KV: "Fetch Secrets"
+ORQ -.-> STOR: "Store State"
+
+FCT --> CV: "Data Model"
+AT -.-> PAA: "Audit Events"
+
+note right of SPE
+  Controls:
+  - SELECT only
+  - Allowlist
+  - Complexity limit
+  - Risk scoring
+  - Sensitivity detection
+end note
+
+note right of CV
+  Grounded, certified
+  analytics views per
+  fraud domain
+end note
+
+@enduml
