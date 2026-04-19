@@ -1,7 +1,7 @@
 import { useCallback } from "react";
-import { useMsal } from "@azure/msal-react";
 import { logger } from "../lib/logger";
-import { resolveAuthRuntimeConfig } from "../lib/authConfig";
+
+const SKIP_AUTH = process.env.NEXT_PUBLIC_SKIP_AUTH === 'true';
 
 const FALLBACK_API_SCOPE = "api://439a8182-8c80-49ce-8dc7-703af41c724c/access_as_user";
 
@@ -9,7 +9,32 @@ type ApiRequestInit = RequestInit & {
     allowInteractiveAuth?: boolean;
 };
 
-export function useApi() {
+// DEV MODE: skip MSAL entirely
+function useApiDev() {
+    const fetchWithAuth = useCallback(async (url: string, options: ApiRequestInit = {}) => {
+        const { allowInteractiveAuth, ...requestOptions } = options;
+        const method = requestOptions.method?.toUpperCase() ?? "GET";
+        const start = performance.now();
+        const response = await fetch(url, requestOptions);
+        const ms = Math.round(performance.now() - start);
+        const endpoint = url.replace(/^https?:\/\/[^/]+/, "");
+        logger.info(`API ${method} ${endpoint}`, { status: response.status, durationMs: ms, ok: response.ok });
+        return response;
+    }, []);
+
+    return {
+        fetchWithAuth,
+        userId: "dev-user-local",
+        account: { name: "Dev User", localAccountId: "dev-user-local", homeAccountId: "dev-user-local" } as any,
+    };
+}
+
+// PRODUCTION MODE: use MSAL
+function useApiMsal() {
+    // Dynamic import so MSAL hooks are only called when not in skip mode
+    const { useMsal } = require("@azure/msal-react");
+    const { resolveAuthRuntimeConfig } = require("../lib/authConfig");
+
     const { instance, accounts } = useMsal();
     const runtimeConfig = resolveAuthRuntimeConfig({
         clientId: process.env.NEXT_PUBLIC_AZURE_AD_CLIENT_ID,
@@ -118,3 +143,11 @@ export function useApi() {
 
     return { fetchWithAuth, userId, account: activeAccount };
 }
+
+export function useApi() {
+    if (SKIP_AUTH) {
+        return useApiDev();
+    }
+    return useApiMsal();
+}
+

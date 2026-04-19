@@ -2,13 +2,21 @@ import { useState, useEffect } from "react";
 import { Organization } from "../types";
 import { toast } from "sonner";
 
+const SKIP_AUTH = process.env.NEXT_PUBLIC_SKIP_AUTH === 'true';
+
 const getOrganizationsStorageKey = (userId?: string) =>
   userId ? `qp_organizations:${userId}` : "qp_organizations";
 
+const DEV_ORG: Organization = {
+  id: 'dev-org-001',
+  name: 'Dev Workspace',
+  industry: 'Technology',
+};
+
 export function useWorkspace(userId: string | undefined, fetchWithAuth: (url: string, options?: any) => Promise<Response>) {
-  const [organizations, setOrganizations] = useState<Organization[]>([]);
-  const [organization, setOrganization] = useState<Organization | null>(null);
-  const [isLoadingOrg, setIsLoadingOrg] = useState(true);
+  const [organizations, setOrganizations] = useState<Organization[]>(SKIP_AUTH ? [DEV_ORG] : []);
+  const [organization, setOrganization] = useState<Organization | null>(SKIP_AUTH ? DEV_ORG : null);
+  const [isLoadingOrg, setIsLoadingOrg] = useState(!SKIP_AUTH);
   const [isAddingWorkspace, setIsAddingWorkspace] = useState(false);
 
   useEffect(() => {

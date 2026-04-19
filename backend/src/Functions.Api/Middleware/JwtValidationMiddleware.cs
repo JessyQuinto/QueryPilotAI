@@ -20,6 +20,17 @@ public class JwtValidationMiddleware : IFunctionsWorkerMiddleware
 
     public async Task Invoke(FunctionContext context, FunctionExecutionDelegate next)
     {
+        // DEV MODE: Skip JWT validation entirely
+        var skipValidation = Environment.GetEnvironmentVariable("Auth__SkipValidation");
+        if (string.Equals(skipValidation, "true", StringComparison.OrdinalIgnoreCase))
+        {
+            _logger.LogWarning("⚠️ Auth validation SKIPPED (Auth__SkipValidation=true). Do NOT use in production.");
+            context.Items["UserId"] = "dev-user@local";
+            context.Items["UserAliases"] = new List<string> { "dev-user@local" };
+            await next(context);
+            return;
+        }
+
         var req = await context.GetHttpRequestDataAsync();
         
         if (req == null)

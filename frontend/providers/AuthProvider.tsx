@@ -40,6 +40,144 @@ const legalDocuments: Record<LegalDocumentKey, { title: string; paragraphs: stri
 };
 
 export function AuthProvider({ children, config }: AuthProviderProps) {
+    const skipAuth = process.env.NEXT_PUBLIC_SKIP_AUTH === 'true';
+
+    // DEV MODE: show landing/login pages but skip real MSAL auth
+    if (skipAuth) {
+        return <DevAuthProvider>{children}</DevAuthProvider>;
+    }
+
+    return <MsalAuthProvider config={config}>{children}</MsalAuthProvider>;
+}
+
+function DevAuthProvider({ children }: { children: ReactNode }) {
+    const [isAuthenticated, setIsAuthenticated] = useState(false);
+    const [activeDocument, setActiveDocument] = useState<LegalDocumentKey | null>(null);
+    const modalRef = useRef<HTMLDivElement | null>(null);
+    const pathname = usePathname();
+    const router = useRouter();
+
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            const saved = sessionStorage.getItem('dev_authenticated');
+            if (saved === 'true') setIsAuthenticated(true);
+        }
+    }, []);
+
+    useEffect(() => {
+        if (!activeDocument) {
+            document.body.style.overflow = '';
+            return;
+        }
+        document.body.style.overflow = 'hidden';
+        requestAnimationFrame(() => {
+            modalRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            modalRef.current?.focus();
+        });
+        return () => { document.body.style.overflow = ''; };
+    }, [activeDocument]);
+
+    const handleDevLogin = () => {
+        sessionStorage.setItem('dev_authenticated', 'true');
+        setIsAuthenticated(true);
+        router.push('/dashboard');
+    };
+
+    const isPublicRoute = pathname?.startsWith('/docs');
+    if (isPublicRoute) return <>{children}</>;
+
+    if (!isAuthenticated) {
+        if (pathname === '/login') {
+            const legalDocument = activeDocument ? legalDocuments[activeDocument] : null;
+            return (
+                <div className="mosaic-center min-h-screen bg-zinc-950 text-zinc-100 flex items-center justify-center p-6 font-mono overflow-hidden">
+                    <div className="relative w-full max-w-md border border-zinc-800 bg-zinc-900/80 p-8 shadow-[0_25px_70px_rgba(0,0,0,0.6)] mono-scanline mono-enter">
+                        <div className="mx-auto flex h-16 w-16 items-center justify-center border border-zinc-700 bg-zinc-950 mono-enter-delay-1">
+                            <div className="text-center leading-none">
+                                <p className="text-[15px] font-bold tracking-wider text-primary">IF</p>
+                                <p className="text-[9px] uppercase tracking-[0.25em] text-zinc-500">AI</p>
+                            </div>
+                        </div>
+                        <p className="mono-enter-delay-1 mt-5 text-center text-[11px] uppercase tracking-[0.24em] text-zinc-500">InsightForge Access</p>
+                        <h1 className="mono-enter-delay-1 mt-2 text-center text-2xl font-bold text-zinc-100">
+                            <span className="mono-caret-inline">Iniciar sesion</span>
+                        </h1>
+                        <p className="mono-enter-delay-2 mt-3 text-center text-sm leading-6 text-zinc-400">
+                            Login corporativo para acceder al workspace de analitica segura.
+                        </p>
+                        <button type="button" onClick={handleDevLogin}
+                            className="mono-enter-delay-2 mt-7 flex w-full items-center justify-center gap-3 border border-zinc-700 bg-zinc-950 px-4 py-3 text-sm font-semibold text-zinc-100 transition-colors hover:bg-zinc-800">
+                            <svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4" role="img">
+                                <rect x="1" y="1" width="10" height="10" fill="#f25022" />
+                                <rect x="13" y="1" width="10" height="10" fill="#7fba00" />
+                                <rect x="1" y="13" width="10" height="10" fill="#00a4ef" />
+                                <rect x="13" y="13" width="10" height="10" fill="#ffb900" />
+                            </svg>
+                            Continuar con Microsoft Entra ID
+                        </button>
+                        <button type="button" onClick={() => router.push('/')}
+                            className="mono-enter-delay-2 mt-3 w-full border border-zinc-700 px-4 py-3 text-sm font-semibold text-zinc-300 transition-colors hover:bg-zinc-800">
+                            Volver al inicio
+                        </button>
+                        <p className="mono-enter-delay-2 mt-6 text-center text-[11px] leading-5 text-zinc-500">
+                            Al continuar aceptas politicas de seguridad, auditoria y cumplimiento corporativo.
+                        </p>
+                        <p className="mono-enter-delay-2 mt-2 text-center text-[11px] leading-5 text-zinc-500">
+                            Leer{' '}
+                            <button type="button" onClick={() => setActiveDocument('privacy')} className="underline underline-offset-2 hover:text-zinc-300 transition-colors">Politica de Privacidad</button>
+                            {' '}y{' '}
+                            <button type="button" onClick={() => setActiveDocument('terms')} className="underline underline-offset-2 hover:text-zinc-300 transition-colors">Terminos del Servicio</button>
+                        </p>
+                    </div>
+                    {legalDocument ? (
+                        <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/80 px-4 backdrop-blur-sm">
+                            <div ref={modalRef} tabIndex={-1} className="w-full max-w-3xl border border-zinc-700 bg-[#0a0a0a] p-0 text-zinc-200 shadow-[0_20px_80px_rgba(0,0,0,0.65)] outline-none">
+                                <div className="flex items-center justify-between border-b border-zinc-800 bg-[#111111] px-6 py-4 font-mono">
+                                    <div>
+                                        <p className="text-[11px] uppercase tracking-[0.24em] text-zinc-500">Legal Document</p>
+                                        <h2 className="mt-1 text-lg font-bold text-zinc-100">{legalDocument.title}</h2>
+                                    </div>
+                                    <button type="button" onClick={() => setActiveDocument(null)} className="border border-zinc-700 px-3 py-1.5 text-[12px] font-semibold uppercase tracking-[0.14em] text-zinc-300 transition-colors hover:bg-zinc-800 hover:text-white">Cerrar</button>
+                                </div>
+                                <div className="max-h-[72vh] overflow-y-auto px-6 py-5 font-mono text-[13px] leading-7 text-zinc-300">
+                                    <div className="mb-5 border border-zinc-800 bg-zinc-900/40 px-4 py-3 text-[12px] text-zinc-400">Al continuar aceptas operar bajo politicas de seguridad, auditoria y cumplimiento corporativo.</div>
+                                    <div className="space-y-4">{legalDocument.paragraphs.map((p) => <p key={p}>{p}</p>)}</div>
+                                </div>
+                            </div>
+                        </div>
+                    ) : null}
+                </div>
+            );
+        }
+
+        return (
+            <div className="relative min-h-screen font-sans selection:bg-blue-900 selection:text-white">
+                <LandingPage onShowLegal={setActiveDocument} />
+                {activeDocument ? (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/80 px-4 backdrop-blur-sm">
+                        <div ref={modalRef} tabIndex={-1} className="w-full max-w-3xl border border-zinc-700 bg-[#0a0a0a] p-0 text-zinc-200 shadow-[0_20px_80px_rgba(0,0,0,0.65)] outline-none">
+                            <div className="flex items-center justify-between border-b border-zinc-800 bg-[#111111] px-6 py-4 font-mono">
+                                <div>
+                                    <p className="text-[11px] uppercase tracking-[0.24em] text-zinc-500">Legal Document</p>
+                                    <h2 className="mt-1 text-lg font-bold text-zinc-100">{legalDocuments[activeDocument].title}</h2>
+                                </div>
+                                <button type="button" onClick={() => setActiveDocument(null)} className="border border-zinc-700 px-3 py-1.5 text-[12px] font-semibold uppercase tracking-[0.14em] text-zinc-300 transition-colors hover:bg-zinc-800 hover:text-white">Cerrar</button>
+                            </div>
+                            <div className="max-h-[72vh] overflow-y-auto px-6 py-5 font-mono text-[13px] leading-7 text-zinc-300">
+                                <div className="mb-5 border border-zinc-800 bg-zinc-900/40 px-4 py-3 text-[12px] text-zinc-400">Al continuar aceptas operar bajo politicas de seguridad, auditoria y cumplimiento corporativo.</div>
+                                <div className="space-y-4">{legalDocuments[activeDocument].paragraphs.map((p) => <p key={p}>{p}</p>)}</div>
+                            </div>
+                        </div>
+                    </div>
+                ) : null}
+            </div>
+        );
+    }
+
+    return children;
+}
+
+function MsalAuthProvider({ children, config }: AuthProviderProps) {
     const [isMsalInitialized, setIsMsalInitialized] = useState(false);
     const [msalInstance, setMsalInstance] = useState<PublicClientApplication | null>(null);
     const [configurationError, setConfigurationError] = useState<string | null>(null);
