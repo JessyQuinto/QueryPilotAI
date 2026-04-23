@@ -299,6 +299,13 @@ public class FraudInsightOrchestrator
         context.SetCustomStatus(new PipelineStep("sql_validation", "SQL validado", "Completed", context.CurrentUtcDateTime));
 
         // =====================================================
+        // Step 5.5: SQL RBAC Rewrite
+        // =====================================================
+        context.SetCustomStatus(new PipelineStep("sql_rewrite", "Aplicando políticas de acceso a nivel de fila (RBAC)", "Active", context.CurrentUtcDateTime));
+        var finalSql = await context.CallActivityAsync<string>(nameof(SqlRewriterActivity), new SqlRewriterInput(validation.NormalizedSql, request.Role));
+        context.SetCustomStatus(new PipelineStep("sql_rewrite", "Reescritura aplicada", "Completed", context.CurrentUtcDateTime));
+
+        // =====================================================
         // Step 6: Approval Flow (if required)
         // =====================================================
         if (validation.RequiresApproval)
@@ -310,14 +317,14 @@ public class FraudInsightOrchestrator
                 Status = "PendingApproval",
                 Timestamp = context.CurrentUtcDateTime,
                 Message = "Esta consulta requiere aprobación manual antes de ejecutarse.",
-                Sql = validation.NormalizedSql,
+                Sql = finalSql,
                 RiskLevel = validation.RiskLevel,
                 Reasons = validation.Reasons
             });
 
             await context.CallActivityAsync(nameof(SaveAuditTrailActivity), new AuditTrailRecord(
                 requestId, request.UserId, request.Role, request.Question,
-                plannerResponse.Status, validation.NormalizedSql, string.Join("; ", validation.Reasons),
+                plannerResponse.Status, finalSql, string.Join("; ", validation.Reasons),
                 "PendingApproval", context.CurrentUtcDateTime, null));
 
             ApprovalDecision decision;
@@ -332,12 +339,12 @@ public class FraudInsightOrchestrator
                     context,
                     request,
                     "La solicitud de aprobación expiró. El SQL no fue ejecutado.",
-                    sqlGenerated: validation.NormalizedSql,
+                    sqlGenerated: finalSql,
                     intentType: "approval_timeout");
                 return new InsightResponse(
                     context.InstanceId, "TimedOut",
                     "La solicitud de aprobación expiró. El SQL no fue ejecutado.",
-                    validation.Reasons, validation.NormalizedSql, Array.Empty<string>(),
+                    validation.Reasons, finalSql, Array.Empty<string>(),
                     new List<Dictionary<string, object?>>(),
                     new AuditMetadata(validation.RiskLevel, null));
             }
@@ -347,19 +354,19 @@ public class FraudInsightOrchestrator
                 context.SetCustomStatus(new PipelineStep("approval", "Rechazado por " + decision.ApproverUserId, "Failed", context.CurrentUtcDateTime));
                 await context.CallActivityAsync(nameof(SaveAuditTrailActivity), new AuditTrailRecord(
                     requestId, request.UserId, request.Role, request.Question,
-                    plannerResponse.Status, validation.NormalizedSql, $"Rejected: {decision.Comments}",
+                    plannerResponse.Status, finalSql, $"Rejected: {decision.Comments}",
                     "Rejected", context.CurrentUtcDateTime, context.CurrentUtcDateTime));
                 await PersistConversationExchangeAsync(
                     context,
                     request,
                     $"La consulta fue rechazada. Motivo: {decision.Comments ?? "Sin comentario"}",
-                    sqlGenerated: validation.NormalizedSql,
+                    sqlGenerated: finalSql,
                     agentResponse: decision.Comments,
                     intentType: "approval_rejected");
                 return new InsightResponse(
                     context.InstanceId, "Rejected",
                     $"La consulta fue rechazada. Motivo: {decision.Comments ?? "Sin comentario"}",
-                    validation.Reasons, validation.NormalizedSql, Array.Empty<string>(),
+                    validation.Reasons, finalSql, Array.Empty<string>(),
                     new List<Dictionary<string, object?>>(),
                     new AuditMetadata(validation.RiskLevel, decision.ApproverUserId));
             }
@@ -373,9 +380,16 @@ public class FraudInsightOrchestrator
         context.SetCustomStatus(new PipelineStep("sql_execution", "Ejecutando SQL", "Active", context.CurrentUtcDateTime));
 
         var rows = await context.CallActivityAsync<List<Dictionary<string, object?>>>(
-            nameof(ExecuteSqlActivity), new SqlExecutionInput(validation.NormalizedSql, request.Connection));
+            nameof(ExecuteSqlActivity), new SqlExecutionInput(finalSql, request.Connection));
 
         context.SetCustomStatus(new PipelineStep("sql_execution", "Consulta ejecutada", "Completed", context.CurrentUtcDateTime));
+
+        // =====================================================
+        // Step 7.5: Detect Demographic Bias
+        // =====================================================
+        context.SetCustomStatus(new PipelineStep("bias_detection", "Analizando sesgos demográficos", "Active", context.CurrentUtcDateTime));
+        var biasWarnings = await context.CallActivityAsync<List<string>>(nameof(DetectBiasActivity), rows);
+        context.SetCustomStatus(new PipelineStep("bias_detection", "Análisis de sesgo completado", "Completed", context.CurrentUtcDateTime));
 
         // =====================================================
         // Step 8: Result Interpreter (Foundry Agent)
@@ -392,7 +406,7 @@ public class FraudInsightOrchestrator
 
         var interpretation = await context.CallActivityAsync<ResultInterpretation>(
             nameof(InterpretResultsActivity),
-            new ResultInterpreterInput(request.Question, intentJson, validation.NormalizedSql, rows, governanceJson));
+            new ResultInterpreterInput(request.Question, intentJson, finalSql, rows, governanceJson));
 
         context.SetCustomStatus(new PipelineStep("interpretation", "Insight generado", "Completed", context.CurrentUtcDateTime));
 
@@ -400,26 +414,26 @@ public class FraudInsightOrchestrator
         // Step 9: Save conversation turn + audit
         // =====================================================
         var summary = BuildUserNarrativeSummary(interpretation, rows.Count);
-        var warnings = BuildWarnings(interpretation);
+        var warnings = BuildWarnings(interpretation).Concat(biasWarnings).ToArray();
         var suggestedChart = BuildSuggestedChart(interpretation, rows.Count);
 
         await PersistConversationExchangeAsync(
             context,
             request,
             summary,
-            sqlGenerated: validation.NormalizedSql,
+            sqlGenerated: finalSql,
             agentResponse: JsonSerializer.Serialize(interpretation),
             intentType: "analytical");
 
         await context.CallActivityAsync(nameof(SaveAuditTrailActivity), new AuditTrailRecord(
             requestId, request.UserId, request.Role, request.Question,
-            plannerResponse.Status, validation.NormalizedSql, null,
+            plannerResponse.Status, finalSql, null,
             "Completed", context.CurrentUtcDateTime, context.CurrentUtcDateTime));
 
         return new InsightResponse(
             context.InstanceId, "Completed", summary,
             interpretation.KeyFindings?.Select(f => f.Title ?? "").ToArray() ?? Array.Empty<string>(),
-            validation.NormalizedSql, warnings,
+            finalSql, warnings,
             rows, new AuditMetadata(interpretation.Risk?.Level ?? "low", null), suggestedChart);
     }
 

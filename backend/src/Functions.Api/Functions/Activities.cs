@@ -66,6 +66,20 @@ public class ValidateSqlPolicyActivity(ISqlPolicyEngine sqlPolicyEngine)
         Task.FromResult(sqlPolicyEngine.Validate(sql));
 }
 
+public class SqlRewriterActivity(ISqlRewriterService sqlRewriter)
+{
+    [Function(nameof(SqlRewriterActivity))]
+    public Task<string> Run([ActivityTrigger] SqlRewriterInput input) =>
+        Task.FromResult(sqlRewriter.RewriteSql(input.Sql, input.Role));
+}
+
+public class DetectBiasActivity(IBiasDetectorService biasDetector)
+{
+    [Function(nameof(DetectBiasActivity))]
+    public Task<List<string>> Run([ActivityTrigger] List<Dictionary<string, object?>> rows) =>
+        Task.FromResult(biasDetector.DetectBias(rows));
+}
+
 public class ExecuteSqlActivity(ISqlExecutionService sqlExecutionService)
 {
     [Function(nameof(ExecuteSqlActivity))]
@@ -120,3 +134,4 @@ public sealed record ResultInterpreterInput(string Question, string IntentJson, 
 public sealed record SchemaCacheInput(Guid ConnectionId, string SchemaJson);
 public sealed record RecentTurnsInput(Guid SessionId, int MaxTurns = 10);
 public sealed record ConciergeInput(string UserId, string Message, string? ConversationContext);
+public sealed record SqlRewriterInput(string Sql, string Role);

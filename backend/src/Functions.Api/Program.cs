@@ -32,6 +32,8 @@ var host = new HostBuilder()
 
         // --- Security ---
         services.AddSingleton<Infrastructure.Security.IPromptSafetyService, Infrastructure.Security.PromptSafetyService>();
+        services.AddSingleton<Core.Domain.Policies.ISqlRewriterService, Infrastructure.Security.SqlRewriterService>();
+        services.AddSingleton<Core.Domain.Policies.IBiasDetectorService, Infrastructure.Security.BiasDetectorService>();
 
         // --- Foundry Agent Client ---
         var projectEndpoint = Environment.GetEnvironmentVariable("FoundryAgent__ProjectEndpoint")
