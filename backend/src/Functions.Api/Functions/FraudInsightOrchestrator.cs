@@ -23,12 +23,61 @@ public class FraudInsightOrchestrator
             : context.InstanceId.PadRight(32, '0'));
 
         // =====================================================
-        // Step 0: Concierge (Foundry Agent) — Conversational vs Analytical
+        // Step 0: Conversation Context (from persistent DB)
+        // =====================================================
+        int turnCount = 0;
+        string? conversationContext = null;
+        string? lastSqlFromConversation = null;
+        Guid? sessionGuidValue = null;
+
+        if (request.SessionId is not null && Guid.TryParse(request.SessionId, out var parsedSessionGuid))
+        {
+            sessionGuidValue = parsedSessionGuid;
+            context.SetCustomStatus(new PipelineStep("conversation_context", "Recuperando contexto de conversación", "Active", context.CurrentUtcDateTime));
+
+            var recentTurns = await context.CallActivityAsync<List<ConversationTurnRecord>>(
+                nameof(GetRecentTurnsActivity), new RecentTurnsInput(sessionGuidValue.Value, 6));
+
+            turnCount = recentTurns.Count;
+
+            if (recentTurns.Count > 0)
+            {
+                var lastAnalyticalTurn = recentTurns.LastOrDefault(t => !string.IsNullOrWhiteSpace(t.SqlGenerated));
+                lastSqlFromConversation = lastAnalyticalTurn?.SqlGenerated;
+
+                conversationContext = JsonSerializer.Serialize(new
+                {
+                    latest = lastAnalyticalTurn is null
+                        ? null
+                        : new
+                        {
+                            question = lastAnalyticalTurn.Question,
+                            summary = lastAnalyticalTurn.Summary,
+                            sql = lastAnalyticalTurn.SqlGenerated,
+                            intent = lastAnalyticalTurn.IntentType,
+                            timestamp = lastAnalyticalTurn.CreatedAt
+                        },
+                    turns = recentTurns.Select(t => new
+                    {
+                        question = t.Question,
+                        summary = t.Summary,
+                        sql = t.SqlGenerated,
+                        intent = t.IntentType,
+                        timestamp = t.CreatedAt
+                    })
+                });
+            }
+
+            context.SetCustomStatus(new PipelineStep("conversation_context", "Contexto recuperado", "Completed", context.CurrentUtcDateTime));
+        }
+
+        // =====================================================
+        // Step 1: Concierge (Foundry Agent) — Conversational vs Analytical
         // =====================================================
         context.SetCustomStatus(new PipelineStep("concierge_routing", "El Agente Conversacional está analizando el contexto", "Active", context.CurrentUtcDateTime));
 
         var classification = await context.CallActivityAsync<ConversationalClassification?>(
-            nameof(ClassifyWithConciergeActivity), request);
+            nameof(ClassifyWithConciergeActivity), new ConciergeInput(request.UserId, request.Question, conversationContext));
 
         if (classification is not null && !string.Equals(classification.Category, "analytical", StringComparison.OrdinalIgnoreCase))
         {
@@ -78,52 +127,7 @@ public class FraudInsightOrchestrator
 
         context.SetCustomStatus(new PipelineStep("safety_check", "Prompt seguro", "Completed", context.CurrentUtcDateTime));
 
-        // =====================================================
-        // Step 2: Conversation Context (from persistent DB)
-        // =====================================================
-        int turnCount = 0;
-        string? conversationContext = null;
-        string? lastSqlFromConversation = null;
 
-        if (request.SessionId is not null && Guid.TryParse(request.SessionId, out var sessionGuid))
-        {
-            context.SetCustomStatus(new PipelineStep("conversation_context", "Recuperando contexto de conversación", "Active", context.CurrentUtcDateTime));
-
-            var recentTurns = await context.CallActivityAsync<List<ConversationTurnRecord>>(
-                nameof(GetRecentTurnsActivity), new RecentTurnsInput(sessionGuid, 6));
-
-            turnCount = recentTurns.Count;
-
-            if (recentTurns.Count > 0)
-            {
-                var lastAnalyticalTurn = recentTurns.LastOrDefault(t => !string.IsNullOrWhiteSpace(t.SqlGenerated));
-                lastSqlFromConversation = lastAnalyticalTurn?.SqlGenerated;
-
-                conversationContext = JsonSerializer.Serialize(new
-                {
-                    latest = lastAnalyticalTurn is null
-                        ? null
-                        : new
-                        {
-                            question = lastAnalyticalTurn.Question,
-                            summary = lastAnalyticalTurn.Summary,
-                            sql = lastAnalyticalTurn.SqlGenerated,
-                            intent = lastAnalyticalTurn.IntentType,
-                            timestamp = lastAnalyticalTurn.CreatedAt
-                        },
-                    turns = recentTurns.Select(t => new
-                    {
-                        question = t.Question,
-                        summary = t.Summary,
-                        sql = t.SqlGenerated,
-                        intent = t.IntentType,
-                        timestamp = t.CreatedAt
-                    })
-                });
-            }
-
-            context.SetCustomStatus(new PipelineStep("conversation_context", "Contexto recuperado", "Completed", context.CurrentUtcDateTime));
-        }
 
         // =====================================================
         // Step 3: Extract Database Schema (dynamic, from user's DB)

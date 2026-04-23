@@ -417,6 +417,7 @@ export function useChatEngine() {
         return;
       }
       const body = await response.json();
+      console.log("[DEBUG QUERY RESPONSE]", { status: response.status, body });
       addLog("DEBUG", "Orchestration started: " + body.instanceId);
       const aiMsg: Message = { id: Math.random().toString(), role: "ai", instanceId: body.instanceId, status: "Running", content: "Analizando solicitud..." };
       setMessages((prev) => [...prev, aiMsg]);

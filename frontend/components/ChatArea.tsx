@@ -188,16 +188,30 @@ export function ChatArea({
 
                                       <div className="space-y-2.5">
                                          {questionnaireItems.map((item, qIdx) => (
-                                            <div key={`${msg.id}-question-${qIdx}`} className="flex items-start gap-3 rounded-xl border border-zinc-700/70 bg-zinc-900/70 px-3 py-2.5">
-                                               <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-sky-500/15 text-sky-300 text-[12px] font-semibold px-1.5">
+                                            <button 
+                                                key={`${msg.id}-question-${qIdx}`} 
+                                                onClick={() => { setInput(`Opción ${qIdx + 1}: ${item}`); setTimeout(() => handleSubmit(), 100); }}
+                                                className="w-full text-left flex items-start gap-3 rounded-xl border border-sky-500/30 bg-zinc-900/70 px-3 py-2.5 hover:bg-sky-500/10 hover:border-sky-500/50 transition-colors active:scale-[0.99] cursor-pointer shadow-sm"
+                                            >
+                                               <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-sky-500/20 text-sky-300 text-[12px] font-semibold px-1.5 shrink-0">
                                                   {qIdx + 1}
                                                </span>
-                                               <span className="text-[13px] text-zinc-100 leading-relaxed">{item}</span>
-                                            </div>
+                                               <span className="text-[13px] text-zinc-100 leading-relaxed font-medium">{item}</span>
+                                            </button>
                                          ))}
                                       </div>
 
-                                      <div className="text-[12px] text-zinc-400">Tip: puedes responder todo en un solo mensaje.</div>
+                                      <div className="flex flex-wrap gap-2 pt-1 border-t border-sky-500/20 mt-3">
+                                         {['Sí', 'No', 'Filtrar exactamente', 'Traer todas las coincidencias', 'Omitir'].map(quickReply => (
+                                            <button
+                                               key={quickReply}
+                                               onClick={() => { setInput(quickReply); setTimeout(() => handleSubmit(), 100); }}
+                                               className="px-3 py-1.5 rounded-lg border border-sky-500/30 bg-sky-500/10 text-sky-300 text-[12px] font-medium hover:bg-sky-500/20 transition-colors mt-2 active:scale-95 shadow-sm"
+                                            >
+                                               {quickReply}
+                                            </button>
+                                         ))}
+                                      </div>
                                    </div>
                                 )}
                                 

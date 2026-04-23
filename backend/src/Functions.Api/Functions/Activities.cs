@@ -12,8 +12,8 @@ namespace Functions.Api.Functions;
 public class ClassifyWithConciergeActivity(IFoundryAgentClient agentClient)
 {
     [Function(nameof(ClassifyWithConciergeActivity))]
-    public Task<ConversationalClassification?> Run([ActivityTrigger] QueryRequest request) =>
-        agentClient.ClassifyMessageAsync(request.UserId, request.Question);
+    public Task<ConversationalClassification?> Run([ActivityTrigger] ConciergeInput input) =>
+        agentClient.ClassifyMessageAsync(input.UserId, input.Message, input.ConversationContext);
 }
 
 public class ExtractSchemaActivity(ISchemaExtractorService schemaExtractor)
@@ -119,3 +119,4 @@ public sealed record SqlPlannerInput(string Question, string DbSchema, string? C
 public sealed record ResultInterpreterInput(string Question, string IntentJson, string Sql, List<Dictionary<string, object?>> Rows, string? GovernanceJson);
 public sealed record SchemaCacheInput(Guid ConnectionId, string SchemaJson);
 public sealed record RecentTurnsInput(Guid SessionId, int MaxTurns = 10);
+public sealed record ConciergeInput(string UserId, string Message, string? ConversationContext);

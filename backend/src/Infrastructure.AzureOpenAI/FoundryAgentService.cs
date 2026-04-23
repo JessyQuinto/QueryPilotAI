@@ -1,10 +1,7 @@
-using Azure.Identity;
-using Azure.Core;
-using Azure.AI.Projects;
-using Azure.AI.Extensions.OpenAI;
 using Core.Application.Contracts;
 using Microsoft.Extensions.Logging;
-using OpenAI.Responses;
+using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -35,7 +32,7 @@ public interface IFoundryAgentClient
     /// <summary>
     /// Sends a message to the Concierge agent to classify whether it's conversational or analytical.
     /// </summary>
-    Task<ConversationalClassification?> ClassifyMessageAsync(string userId, string message);
+    Task<ConversationalClassification?> ClassifyMessageAsync(string userId, string message, string? conversationContext = null);
 }
 
 // --- Response DTOs ---
@@ -231,10 +228,14 @@ public sealed class RiskInterpretation
 
 public sealed class FoundryAgentClient : IFoundryAgentClient
 {
-    private readonly ProjectResponsesClient _sqlPlannerResponsesClient;
-    private readonly ProjectResponsesClient _resultInterpreterResponsesClient;
-    private readonly ProjectResponsesClient _conciergeResponsesClient;
+    private readonly HttpClient _httpClient;
+    private readonly string _endpoint;
+    private readonly string _apiKey;
+    private readonly string _sqlPlannerAssistantId;
+    private readonly string _resultInterpreterAssistantId;
+    private readonly string _conciergeAssistantId;
     private readonly ILogger<FoundryAgentClient> _logger;
+    private const string ApiVersion = "2024-05-01-preview";
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -253,41 +254,30 @@ public sealed class FoundryAgentClient : IFoundryAgentClient
         string? tenantId = null)
     {
         _logger = logger;
+        _endpoint = projectEndpoint.TrimEnd('/');
+        _apiKey = apiKey ?? throw new InvalidOperationException("AzureOpenAI__ApiKey is required for Assistants API.");
 
-        var credentialOptions = new DefaultAzureCredentialOptions();
-        if (!string.IsNullOrWhiteSpace(tenantId))
-        {
-            credentialOptions.TenantId = tenantId;
-        }
+        // Agent references are now assistant IDs (asst_...) read from FoundryAgent__*AgentId env vars
+        _sqlPlannerAssistantId = Environment.GetEnvironmentVariable("FoundryAgent__SqlPlannerAgentId")
+            ?? throw new InvalidOperationException("FoundryAgent__SqlPlannerAgentId is required.");
+        _resultInterpreterAssistantId = Environment.GetEnvironmentVariable("FoundryAgent__ResultInterpreterAgentId")
+            ?? throw new InvalidOperationException("FoundryAgent__ResultInterpreterAgentId is required.");
+        _conciergeAssistantId = Environment.GetEnvironmentVariable("FoundryAgent__ConciergeAgentId")
+            ?? throw new InvalidOperationException("FoundryAgent__ConciergeAgentId is required.");
 
-        TokenCredential credential = new ChainedTokenCredential(
-            new AzureCliCredential(new AzureCliCredentialOptions
-            {
-                TenantId = credentialOptions.TenantId
-            }),
-            new DefaultAzureCredential(credentialOptions));
+        _httpClient = new HttpClient();
+        _httpClient.DefaultRequestHeaders.Add("api-key", _apiKey);
+        _httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
-        AIProjectClient projectClient = new(
-            endpoint: new Uri(projectEndpoint.Trim()),
-            tokenProvider: credential);
-
-        var sqlPlannerAgent = ParseAgentReference(sqlPlannerAgentReference, nameof(sqlPlannerAgentReference));
-        var resultInterpreterAgent = ParseAgentReference(resultInterpreterAgentReference, nameof(resultInterpreterAgentReference));
-        var conciergeAgent = ParseAgentReference(conciergeAgentReference, nameof(conciergeAgentReference));
-
-        _logger.LogInformation("[FOUNDRY AGENT CONFIG] SQL Planner: {AgentName}:{AgentVersion}", sqlPlannerAgent.Name, sqlPlannerAgent.Version);
-        _logger.LogInformation("[FOUNDRY AGENT CONFIG] Result Interpreter: {AgentName}:{AgentVersion}", resultInterpreterAgent.Name, resultInterpreterAgent.Version);
-        _logger.LogInformation("[FOUNDRY AGENT CONFIG] Concierge: {AgentName}:{AgentVersion}", conciergeAgent.Name, conciergeAgent.Version);
-
-        _sqlPlannerResponsesClient = projectClient.OpenAI.GetProjectResponsesClientForAgent(sqlPlannerAgent);
-        _resultInterpreterResponsesClient = projectClient.OpenAI.GetProjectResponsesClientForAgent(resultInterpreterAgent);
-        _conciergeResponsesClient = projectClient.OpenAI.GetProjectResponsesClientForAgent(conciergeAgent);
+        _logger.LogInformation("[AGENT CONFIG] SQL Planner: {Id}", _sqlPlannerAssistantId);
+        _logger.LogInformation("[AGENT CONFIG] Result Interpreter: {Id}", _resultInterpreterAssistantId);
+        _logger.LogInformation("[AGENT CONFIG] Concierge: {Id}", _conciergeAssistantId);
     }
 
     public async Task<SqlPlannerResponse> PlanSqlAsync(string question, string dbSchema, string? conversationContext = null)
     {
         var userMessage = BuildSqlPlannerMessage(question, dbSchema, conversationContext);
-        var responseText = await RunAgentAsync(_sqlPlannerResponsesClient, userMessage, "sql-planner");
+        var responseText = await RunAgentAsync(_sqlPlannerAssistantId, userMessage, "sql-planner");
 
         _logger.LogInformation("[SQL PLANNER RAW RESPONSE]: {ResponseText}", responseText);
 
@@ -313,7 +303,7 @@ public sealed class FoundryAgentClient : IFoundryAgentClient
         List<Dictionary<string, object?>> rows, string? governanceJson = null)
     {
         var userMessage = BuildResultInterpreterMessage(question, intentJson, sql, rows, governanceJson);
-        var responseText = await RunAgentAsync(_resultInterpreterResponsesClient, userMessage, "result-interpreter");
+        var responseText = await RunAgentAsync(_resultInterpreterAssistantId, userMessage, "result-interpreter");
 
         _logger.LogInformation("[RESULT INTERPRETER RAW RESPONSE]: {ResponseText}", responseText);
 
@@ -335,12 +325,12 @@ public sealed class FoundryAgentClient : IFoundryAgentClient
         }
     }
 
-    public async Task<ConversationalClassification?> ClassifyMessageAsync(string userId, string message)
+    public async Task<ConversationalClassification?> ClassifyMessageAsync(string userId, string message, string? conversationContext = null)
     {
         try
         {
-            var classificationPrompt = BuildConciergeClassificationMessage(message);
-            var responseText = await RunAgentAsync(_conciergeResponsesClient, classificationPrompt, "concierge");
+            var classificationPrompt = BuildConciergeClassificationMessage(message, conversationContext);
+            var responseText = await RunAgentAsync(_conciergeAssistantId, classificationPrompt, "concierge");
 
             _logger.LogInformation("[CONCIERGE RAW RESPONSE]: {ResponseText}", responseText);
 
@@ -379,57 +369,102 @@ public sealed class FoundryAgentClient : IFoundryAgentClient
         }
     }
 
-    private async Task<string> RunAgentAsync(ProjectResponsesClient responseClient, string userMessage, string agentRole)
+    private async Task<string> RunAgentAsync(string assistantId, string userMessage, string agentRole)
     {
-        ResponseResult response = await responseClient.CreateResponseAsync(userMessage);
-        var output = response.GetOutputText()?.Trim();
-
-        if (string.IsNullOrWhiteSpace(output))
+        try
         {
-            _logger.LogWarning("[FOUNDRY RESPONSE EMPTY] role={AgentRole}; responseId={ResponseId}; status={ResponseStatus}", agentRole, response.Id, response.Status);
+            // 1. Create thread
+            var threadRes = await _httpClient.PostAsync(
+                $"{_endpoint}/openai/threads?api-version={ApiVersion}",
+                new StringContent("{}", System.Text.Encoding.UTF8, "application/json"));
+            threadRes.EnsureSuccessStatusCode();
+            var threadJson = JsonDocument.Parse(await threadRes.Content.ReadAsStringAsync());
+            var threadId = threadJson.RootElement.GetProperty("id").GetString()!;
+
+            // 2. Add message
+            var msgBody = JsonSerializer.Serialize(new { role = "user", content = userMessage });
+            var msgRes = await _httpClient.PostAsync(
+                $"{_endpoint}/openai/threads/{threadId}/messages?api-version={ApiVersion}",
+                new StringContent(msgBody, System.Text.Encoding.UTF8, "application/json"));
+            msgRes.EnsureSuccessStatusCode();
+
+            // 3. Create run
+            var runBody = JsonSerializer.Serialize(new { assistant_id = assistantId });
+            var runRes = await _httpClient.PostAsync(
+                $"{_endpoint}/openai/threads/{threadId}/runs?api-version={ApiVersion}",
+                new StringContent(runBody, System.Text.Encoding.UTF8, "application/json"));
+            runRes.EnsureSuccessStatusCode();
+            var runJson = JsonDocument.Parse(await runRes.Content.ReadAsStringAsync());
+            var runId = runJson.RootElement.GetProperty("id").GetString()!;
+
+            // 4. Poll until completion (max 120s)
+            for (int i = 0; i < 60; i++)
+            {
+                await Task.Delay(2000);
+                var statusRes = await _httpClient.GetAsync(
+                    $"{_endpoint}/openai/threads/{threadId}/runs/{runId}?api-version={ApiVersion}");
+                var statusJson = JsonDocument.Parse(await statusRes.Content.ReadAsStringAsync());
+                var status = statusJson.RootElement.GetProperty("status").GetString();
+
+                if (status == "completed") break;
+                if (status == "failed")
+                {
+                    var error = statusJson.RootElement.TryGetProperty("last_error", out var errProp)
+                        ? errProp.ToString() : "unknown";
+                    _logger.LogError("[AGENT RUN FAILED] role={Role}, error={Error}", agentRole, error);
+                    return "{}";
+                }
+            }
+
+            // 5. Read messages
+            var msgsRes = await _httpClient.GetAsync(
+                $"{_endpoint}/openai/threads/{threadId}/messages?api-version={ApiVersion}");
+            msgsRes.EnsureSuccessStatusCode();
+            var msgsJson = JsonDocument.Parse(await msgsRes.Content.ReadAsStringAsync());
+            var output = msgsJson.RootElement.GetProperty("data")[0]
+                .GetProperty("content")[0]
+                .GetProperty("text")
+                .GetProperty("value")
+                .GetString()?.Trim();
+
+            if (string.IsNullOrWhiteSpace(output))
+            {
+                _logger.LogWarning("[AGENT RESPONSE EMPTY] role={AgentRole}", agentRole);
+                return "{}";
+            }
+
+            // Strip markdown fences
+            if (output.StartsWith("```json", StringComparison.OrdinalIgnoreCase))
+                output = output[7..];
+            else if (output.StartsWith("```", StringComparison.OrdinalIgnoreCase))
+                output = output[3..];
+            if (output.EndsWith("```", StringComparison.OrdinalIgnoreCase))
+                output = output[..^3];
+
+            return output.Trim();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[AGENT EXCEPTION] role={AgentRole}", agentRole);
             return "{}";
         }
-
-        if (output.StartsWith("```json", StringComparison.OrdinalIgnoreCase))
-            output = output[7..];
-        else if (output.StartsWith("```", StringComparison.OrdinalIgnoreCase))
-            output = output[3..];
-        if (output.EndsWith("```", StringComparison.OrdinalIgnoreCase))
-            output = output[..^3];
-
-        return output.Trim();
     }
 
-    private static AgentReference ParseAgentReference(string rawReference, string settingName)
-    {
-        if (string.IsNullOrWhiteSpace(rawReference))
-        {
-            throw new ArgumentException($"Missing Foundry agent reference: {settingName}.", settingName);
-        }
-
-        var trimmed = rawReference.Trim();
-        var separatorIndex = trimmed.IndexOf(':');
-        if (separatorIndex <= 0 || separatorIndex == trimmed.Length - 1)
-        {
-            return new AgentReference(name: trimmed);
-        }
-
-        var name = trimmed[..separatorIndex].Trim();
-        var version = trimmed[(separatorIndex + 1)..].Trim();
-        if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(version))
-        {
-            return new AgentReference(name: trimmed);
-        }
-
-        return new AgentReference(name: name, version: version);
-    }
-
-    private static string BuildConciergeClassificationMessage(string userMessage)
+    private static string BuildConciergeClassificationMessage(string userMessage, string? conversationContext)
     {
         var sb = new System.Text.StringBuilder();
         sb.AppendLine("=== INSTRUCCIÓN DE CLASIFICACIÓN ===");
         sb.AppendLine("Tu tarea es clasificar si el mensaje del usuario requiere análisis de datos (consulta a base de datos, métricas, estadísticas, reportes, gráficas, tendencias, fraude) o es conversacional (saludo, pregunta general, ayuda, agradecimiento, prueba).");
         sb.AppendLine();
+        
+        if (!string.IsNullOrWhiteSpace(conversationContext))
+        {
+            sb.AppendLine("=== CONTEXTO DE CONVERSACIÓN PREVIO ===");
+            sb.AppendLine(conversationContext);
+            sb.AppendLine("NOTA IMPORTANTÍSIMA: Si el usuario responde brevemente (ej. 'ambas', 'si', 'no', 'opción 1', 'fraude') en respuesta a una pregunta de aclaración previa del contexto, ESO ES ANALÍTICO, NO ES CONVERSACIONAL.");
+            sb.AppendLine();
+        }
+
         sb.AppendLine("=== MENSAJE DEL USUARIO ===");
         sb.AppendLine(userMessage);
         sb.AppendLine();
