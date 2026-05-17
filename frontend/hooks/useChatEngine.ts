@@ -2,15 +2,15 @@
 
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useMsal } from "@azure/msal-react";
-import { useApi } from "../../hooks/useApi";
+import { useApi } from "./useApi";
 import { toast } from "sonner";
-import { getErrorMessage } from "../utils";
-import { logger } from "../../lib/logger";
+import { getErrorMessage } from "../components/utils";
+import { logger } from "../lib/logger";
 import type {
   Message, LogEntry, Connection, ChatSession, DashboardTab,
   ServerConnectionRecord, ServerSessionRecord, HistorySession,
   ViewState, Organization,
-} from "../types";
+} from "../components/types";
 
 export function useChatEngine() {
   const [connections, setConnections] = useState<Connection[]>([]);
@@ -305,7 +305,7 @@ export function useChatEngine() {
 
   // --- Chart change shortcircuit helpers ---
 
-  const detectChartTypeFromText = (text: string): import("../types").ChartType | null => {
+  const detectChartTypeFromText = (text: string): import("../components/types").ChartType | null => {
     const lower = text.toLowerCase();
     if (/\b(pie|torta|circular|pastel)\b/.test(lower)) return "pie";
     if (/\b(donut|dona|dona|doughnut|anillo)\b/.test(lower)) return "donut";
@@ -329,8 +329,8 @@ export function useChatEngine() {
 
   const inferChartFromResults = (
     results: Record<string, unknown>[],
-    chartType: import("../types").ChartType
-  ): import("../types").SuggestedChart | undefined => {
+    chartType: import("../components/types").ChartType
+  ): import("../components/types").SuggestedChart | undefined => {
     if (!results || results.length === 0) return undefined;
     const sample = results[0];
     const cols = Object.keys(sample);
@@ -357,12 +357,12 @@ export function useChatEngine() {
           lastAiWithData.suggestedChart ??
           inferChartFromResults(lastAiWithData.results!, requestedType);
         if (baseChart) {
-          const newChart: import("../types").SuggestedChart = {
+          const newChart: import("../components/types").SuggestedChart = {
             ...baseChart,
             type: requestedType,
             title: baseChart.title,
           };
-          const typeLabel: Partial<Record<import("../types").ChartType, string>> = {
+          const typeLabel: Partial<Record<import("../components/types").ChartType, string>> = {
             pie: "pie", bar: "barras", line: "líneas", area: "área",
             donut: "dona", horizontal_bar: "barras horizontales", stacked_bar: "barras apiladas",
             scatter: "dispersión", heatmap: "mapa de calor", combo: "combinado", table: "tabla",

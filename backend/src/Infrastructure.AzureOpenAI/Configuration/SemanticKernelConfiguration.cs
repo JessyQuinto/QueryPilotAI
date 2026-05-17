@@ -12,18 +12,19 @@ public static class SemanticKernelConfiguration
     /// </summary>
     public static IServiceCollection AddSemanticKernelServices(this IServiceCollection services)
     {
-        var endpoint = Environment.GetEnvironmentVariable("AzureOpenAI__Endpoint")
-            ?? throw new InvalidOperationException("AzureOpenAI__Endpoint env var is required");
-        var apiKey = Environment.GetEnvironmentVariable("AzureOpenAI__ApiKey")
-            ?? throw new InvalidOperationException("AzureOpenAI__ApiKey env var is required");
-        var deploymentName = Environment.GetEnvironmentVariable("AzureOpenAI__Deployment") ?? "gpt-4o-mini";
-
         // Register Foundry Agents Plugin (required dependency for Kernel)
         services.AddSingleton<FoundryAgentsPlugin>();
 
         // Build Kernel with Azure OpenAI Chat Completion
         services.AddTransient(serviceProvider =>
         {
+            var configuration = serviceProvider.GetRequiredService<Microsoft.Extensions.Configuration.IConfiguration>();
+            var endpoint = configuration["AzureOpenAI__Endpoint"] 
+                ?? throw new InvalidOperationException("AzureOpenAI__Endpoint configuration is required");
+            var apiKey = configuration["AzureOpenAI__ApiKey"] 
+                ?? throw new InvalidOperationException("AzureOpenAI__ApiKey configuration is required");
+            var deploymentName = configuration["AzureOpenAI__Deployment"] ?? "gpt-4o-mini";
+
             var kernelBuilder = Kernel.CreateBuilder();
 
             kernelBuilder.AddAzureOpenAIChatCompletion(

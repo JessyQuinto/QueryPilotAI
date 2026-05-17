@@ -8,10 +8,10 @@ import { useApi } from "../hooks/useApi";
 import { DashboardTab } from "./types";
 
 // Hooks
-import { useLogs } from "./hooks/useLogs";
-import { useWorkspace } from "./hooks/useWorkspace";
-import { useConnections } from "./hooks/useConnections";
-import { useChatSessions } from "./hooks/useChatSessions";
+import { useLogs } from "../hooks/useLogs";
+import { useWorkspace } from "../hooks/useWorkspace";
+import { useConnections } from "../hooks/useConnections";
+import { useChatSessions } from "../hooks/useChatSessions";
 
 // Components
 import { Sidebar } from "./Sidebar";

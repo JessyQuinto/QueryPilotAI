@@ -3,12 +3,6 @@ using System.Collections.Concurrent;
 
 namespace Infrastructure.AzureOpenAI;
 
-public interface IConversationMemoryService
-{
-    Task<List<ConversationTurn>> GetRecentTurnsAsync(string userId, string? sessionId, int maxTurns);
-    Task AppendTurnAsync(ConversationTurnUpsert turn);
-}
-
 public sealed class ConversationMemoryService : IConversationMemoryService
 {
     private const int MaxTurnsPerSession = 20;

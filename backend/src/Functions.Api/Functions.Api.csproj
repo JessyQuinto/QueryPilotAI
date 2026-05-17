@@ -25,6 +25,5 @@
     <ProjectReference Include="..\Infrastructure.AzureOpenAI\Infrastructure.AzureOpenAI.csproj" />
     <ProjectReference Include="..\Infrastructure.Sql\Infrastructure.Sql.csproj" />
     <ProjectReference Include="..\Infrastructure.Security\Infrastructure.Security.csproj" />
-    <ProjectReference Include="..\Infrastructure.Observability\Infrastructure.Observability.csproj" />
   </ItemGroup>
 </Project>

@@ -52,11 +52,7 @@ var host = new HostBuilder()
         services.AddHttpClient<Infrastructure.AzureOpenAI.IFoundryAgentClient, Infrastructure.AzureOpenAI.FoundryAgentClient>();
 
         // --- Semantic Kernel Integration ---
-        // Variables de entorno cargadas por el host de Azure Functions
         services.AddSemanticKernelServices();
-
-        // Register advanced patterns example (optional; for demonstration)
-        services.AddTransient<Infrastructure.AzureOpenAI.Examples.AdvancedSemanticKernelPatterns>();
     })
     .Build();
 

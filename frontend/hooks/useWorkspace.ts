@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Organization } from "../types";
+import { Organization } from "../components/types";
 import { toast } from "sonner";
 
 const SKIP_AUTH = process.env.NEXT_PUBLIC_SKIP_AUTH === 'true';

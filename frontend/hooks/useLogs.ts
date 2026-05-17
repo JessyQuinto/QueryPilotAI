@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { LogEntry } from "../types";
+import { LogEntry } from "../components/types";
 
 export function useLogs() {
   const [terminalLogs, setTerminalLogs] = useState<LogEntry[]>([]);

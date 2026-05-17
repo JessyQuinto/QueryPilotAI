@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Connection } from "../types";
+import { Connection } from "../components/types";
 import { toast } from "sonner";
 import { useMsal } from "@azure/msal-react";
 

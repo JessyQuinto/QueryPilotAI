@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { flushSync } from "react-dom";
-import { ChatSession, Message, Connection, ServerSessionRecord, ServerConversationTurnRecord } from "../types";
+import { ChatSession, Message, Connection, ServerSessionRecord, ServerConversationTurnRecord } from "../components/types";
 
 const getChatSessionsStorageKey = (userId?: string) =>
   userId ? `qp_chatSessions:${userId}` : "qp_chatSessions";

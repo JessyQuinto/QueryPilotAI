@@ -17,7 +17,7 @@ export default function DocsPage() {
         <div className="mono-theme min-h-screen bg-transparent text-on-background flex flex-col overflow-hidden">
             {/* Top NavBar Shared */}
             <nav className="mono-enter flex justify-between items-center px-8 py-4 w-full bg-background/80 backdrop-blur-md z-50 border-b border-outline">
-                <Link href="/" className="text-xl font-bold tracking-tight text-on-background">InsightForge AI</Link>
+                <Link href="/" className="text-xl font-bold tracking-tight text-on-background">QueryPilot AI</Link>
                 <div className="hidden md:flex items-center space-x-10 text-[11px] tracking-widest uppercase font-bold text-on-surface-variant">
                     <Link className="hover:text-primary transition-colors duration-300" href="/docs">Docs</Link>
                     <div className="flex items-center space-x-6 border-l border-surface-variant pl-6">
@@ -114,7 +114,7 @@ export default function DocsPage() {
                             <TypewriterTitle text="SQL Query Workspace" speedMs={50} startDelayMs={220} />
                         </h1>
                         <p className="text-on-surface-variant leading-relaxed mb-10 text-lg">
-                            For advanced users, analysts, and data engineers, InsightForge AI features a fully-fledged IDE for deep database interaction. You can bypass the natural language layer anytime to write, execute, and profile raw SQL directly against your securely connected data sources.
+                            For advanced users, analysts, and data engineers, QueryPilot AI features a fully-fledged IDE for deep database interaction. You can bypass the natural language layer anytime to write, execute, and profile raw SQL directly against your securely connected data sources.
                         </p>
 
                         {/* App Screenshot Placeholder */}
@@ -190,7 +190,7 @@ export default function DocsPage() {
                                 <TypewriterTitle text="Navigating Your Schema" speedMs={42} startDelayMs={340} />
                             </h2>
                             <p className="text-on-surface-variant leading-relaxed mb-4">
-                                InsightForge AI offers an intuitive metadata tree to inspect your data architecture. The left panel shows live reflections of all accessible schemas, tables, and views. Interacting with any entity automatically generates a base scaffold script to preview its structure without writing manual syntax.
+                                QueryPilot AI offers an intuitive metadata tree to inspect your data architecture. The left panel shows live reflections of all accessible schemas, tables, and views. Interacting with any entity automatically generates a base scaffold script to preview its structure without writing manual syntax.
                             </p>
                             <p className="text-on-surface-variant leading-relaxed">
                                 To protect your infrastructure and reduce overhead, the system enforces a native pagination limit of 100 rows per execution by default, though you can freely override this behavior by appending a custom LIMIT to your script.
@@ -202,7 +202,7 @@ export default function DocsPage() {
                                 <TypewriterTitle text="Synchronizing Metadata" speedMs={42} startDelayMs={400} />
                             </h2>
                             <p className="text-on-surface-variant leading-relaxed mb-4">
-                                When external migrations or structural alterations occur outside of InsightForge, you can trigger a manual synchronization from the workspace header. This immediately fetches the latest object definitions from your remote server.
+                                When external migrations or structural alterations occur outside of QueryPilot AI, you can trigger a manual synchronization from the workspace header. This immediately fetches the latest object definitions from your remote server.
                             </p>
                             <p className="text-on-surface-variant leading-relaxed">
                                 Note that any direct DDL operations (such as CREATE or ALTER statements) successfully executed inside our editor will automatically push a sync signal to keep your artificial intelligence's semantic understanding fully up to date.
