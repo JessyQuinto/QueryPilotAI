@@ -10,20 +10,23 @@ public class SqlRewriterService : ISqlRewriterService
         if (string.IsNullOrWhiteSpace(originalSql))
             return originalSql;
 
+        // Strip trailing semicolons to avoid T-SQL CTE syntax errors
+        var cleanedSql = originalSql.TrimEnd().TrimEnd(';');
+
         // Skip rewriting for Admins
         if (string.Equals(userRole, "Admin", StringComparison.OrdinalIgnoreCase))
         {
             return originalSql;
         }
 
-        // Example RBAC rule: Billing users shouldn't see clinical data freely without limits
+        // RBAC rule: Billing users shouldn't see clinical data freely without limits
         if (string.Equals(userRole, "Billing", StringComparison.OrdinalIgnoreCase))
         {
-            // A naive CTE wrapper for demonstration
-            return $";WITH BaseQuery AS (\n    {originalSql}\n)\nSELECT * FROM BaseQuery LIMIT 100;"; // Forcing limits
+            // T-SQL uses TOP N instead of LIMIT N
+            return $"WITH BaseQuery AS (\n    {cleanedSql}\n)\nSELECT TOP 100 * FROM BaseQuery";
         }
 
         // Default protection: wrap in CTE
-        return $";WITH ProtectedQuery AS (\n    {originalSql}\n)\nSELECT * FROM ProtectedQuery;";
+        return $"WITH ProtectedQuery AS (\n    {cleanedSql}\n)\nSELECT * FROM ProtectedQuery";
     }
 }

@@ -1,4 +1,4 @@
-import { Connection, ChatSession, DashboardTab } from "./types";
+import { Connection, ChatSession, DashboardTab, LogEntry } from "./types";
 import { toast } from "sonner";
 import { TypewriterTitle } from "./TypewriterTitle";
 import { AppIcon } from "./AppIcon";
@@ -17,12 +17,12 @@ interface ConnectionManagerProps {
   isTestingConnection: boolean;
   handleMsalLogin: () => void;
   handleSaveConnection: () => void;
-  fetchWithAuth: (url: string, options?: any) => Promise<Response>;
+  fetchWithAuth: (url: string, options?: RequestInit) => Promise<Response>;
   setChatSessions: React.Dispatch<React.SetStateAction<ChatSession[]>>;
   openTabs: DashboardTab[];
   setOpenTabs: React.Dispatch<React.SetStateAction<DashboardTab[]>>;
   setExpandedConns: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
-  addLog: (level: any, msg: string) => void;
+  addLog: (level: LogEntry["level"], msg: string) => void;
   createChatSession: (connectionId: string, title?: string) => Promise<ChatSession>;
 }
 

@@ -144,10 +144,7 @@ function useApiMsal() {
     return { fetchWithAuth, userId, account: activeAccount };
 }
 
-export function useApi() {
-    if (SKIP_AUTH) {
-        return useApiDev();
-    }
-    return useApiMsal();
-}
-
+// Fix: Select the hook implementation at module scope to avoid
+// conditional hook calls, which violate React's Rules of Hooks.
+// SKIP_AUTH is a build-time constant, so this is safe.
+export const useApi = SKIP_AUTH ? useApiDev : useApiMsal;

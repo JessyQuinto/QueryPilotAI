@@ -1,6 +1,7 @@
 using Core.Application.Contracts;
 using Core.Domain.Policies;
 using Infrastructure.AzureOpenAI;
+using Infrastructure.AzureOpenAI.Models;
 using Infrastructure.Sql;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.DurableTask;
@@ -601,7 +602,9 @@ public class FraudInsightOrchestrator
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[WARNING] SaveConversationTurn failed: {ex.Message}");
+            // Note: In Durable Functions orchestrators, ILogger is not directly available.
+            // This fallback uses context-level logging when the save operation fails non-critically.
+            System.Diagnostics.Trace.TraceWarning("[SaveConversationTurn] Failed: {0}", ex.Message);
         }
     }
 

@@ -35,27 +35,21 @@ var host = new HostBuilder()
         services.AddSingleton<Core.Domain.Policies.ISqlRewriterService, Infrastructure.Security.SqlRewriterService>();
         services.AddSingleton<Core.Domain.Policies.IBiasDetectorService, Infrastructure.Security.BiasDetectorService>();
 
-        // --- Foundry Agent Client ---
-        var projectEndpoint = Environment.GetEnvironmentVariable("FoundryAgent__ProjectEndpoint")
-            ?? throw new InvalidOperationException("FoundryAgent__ProjectEndpoint is required.");
-        var sqlPlannerAgentReference = Environment.GetEnvironmentVariable("FoundryAgent__SqlPlannerAgentRef")
-            ?? throw new InvalidOperationException("FoundryAgent__SqlPlannerAgentRef is required.");
-        var resultInterpreterAgentReference = Environment.GetEnvironmentVariable("FoundryAgent__ResultInterpreterAgentRef")
-            ?? throw new InvalidOperationException("FoundryAgent__ResultInterpreterAgentRef is required.");
-        var conciergeAgentReference = Environment.GetEnvironmentVariable("FoundryAgent__ConciergeAgentRef")
-            ?? throw new InvalidOperationException("FoundryAgent__ConciergeAgentRef is required.");
-        var foundryApiKey = Environment.GetEnvironmentVariable("AzureOpenAI__ApiKey"); // optional: use key auth for local dev
-        var foundryTenantId = Environment.GetEnvironmentVariable("FoundryAgent__TenantId");
+        // --- Foundry Agent Client (IOptions + IHttpClientFactory) ---
+        services.Configure<FoundryAgentOptions>(opts =>
+        {
+            opts.ProjectEndpoint = Environment.GetEnvironmentVariable("FoundryAgent__ProjectEndpoint") ?? string.Empty;
+            opts.SqlPlannerAgentRef = Environment.GetEnvironmentVariable("FoundryAgent__SqlPlannerAgentRef") ?? string.Empty;
+            opts.SqlPlannerAgentId = Environment.GetEnvironmentVariable("FoundryAgent__SqlPlannerAgentId") ?? string.Empty;
+            opts.ResultInterpreterAgentRef = Environment.GetEnvironmentVariable("FoundryAgent__ResultInterpreterAgentRef") ?? string.Empty;
+            opts.ResultInterpreterAgentId = Environment.GetEnvironmentVariable("FoundryAgent__ResultInterpreterAgentId") ?? string.Empty;
+            opts.ConciergeAgentRef = Environment.GetEnvironmentVariable("FoundryAgent__ConciergeAgentRef") ?? string.Empty;
+            opts.ConciergeAgentId = Environment.GetEnvironmentVariable("FoundryAgent__ConciergeAgentId") ?? string.Empty;
+            opts.TenantId = Environment.GetEnvironmentVariable("FoundryAgent__TenantId");
+        });
 
-        services.AddSingleton<Infrastructure.AzureOpenAI.IFoundryAgentClient>(
-            sp => new Infrastructure.AzureOpenAI.FoundryAgentClient(
-                projectEndpoint,
-                sqlPlannerAgentReference,
-                resultInterpreterAgentReference,
-                conciergeAgentReference,
-                sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<Infrastructure.AzureOpenAI.FoundryAgentClient>>(),
-                foundryApiKey,
-                foundryTenantId));
+        // HttpClient lifecycle managed by the framework — prevents socket exhaustion
+        services.AddHttpClient<Infrastructure.AzureOpenAI.IFoundryAgentClient, Infrastructure.AzureOpenAI.FoundryAgentClient>();
 
         // --- Semantic Kernel Integration ---
         // Variables de entorno cargadas por el host de Azure Functions
@@ -67,3 +61,4 @@ var host = new HostBuilder()
     .Build();
 
 host.Run();
+

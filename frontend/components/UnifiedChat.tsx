@@ -330,11 +330,6 @@ export function UnifiedChat() {
         />
       </div>
 
-      <style dangerouslySetInnerHTML={{__html:`
-      @keyframes gradient-x { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
-      .bg-pan-x { background-size: 200% 200%; animation: gradient-x 15s ease infinite; }
-      @keyframes slide { 0% { transform: translateX(-100%); } 100% { transform: translateX(300%); } }
-      `}}/>
     </>
   );
 }

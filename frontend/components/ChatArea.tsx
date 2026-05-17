@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { ChatSession, Message, Connection } from "./types";
+import { extractQuestionnaireItems } from "./utils";
 import { TypewriterTitle } from "./TypewriterTitle";
 import { AppIcon } from "./AppIcon";
 import { ChartSuggestion } from "./ChartSuggestion";
@@ -12,37 +13,13 @@ interface ChatAreaProps {
   isFullView: boolean;
   setIsFullView: React.Dispatch<React.SetStateAction<boolean>>;
   messagesEndRef: React.RefObject<HTMLDivElement>;
-   addLog: (level: LogLevel, msg: string) => void;
-   fetchWithAuth: (url: string, options?: RequestInit) => Promise<Response>;
+  addLog: (level: LogLevel, msg: string) => void;
+  fetchWithAuth: (url: string, options?: RequestInit) => Promise<Response>;
   handleApproval: (msg: Message, decision: 'Approved' | 'Rejected', comments?: string) => void;
   handleSubmit: () => void;
   input: string;
   setInput: React.Dispatch<React.SetStateAction<string>>;
   isTyping: boolean;
-}
-
-function extractQuestionnaireItems(content?: string): string[] {
-   if (!content) return [];
-
-   const listItems: string[] = [];
-   const lines = content.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
-
-   for (const line of lines) {
-      const cleaned = line.replace(/^(?:\d+[\)\.\-:]|[-*•])\s*/, "").trim();
-      if (cleaned && cleaned !== line) {
-         listItems.push(cleaned.replace(/[.;]+$/, ""));
-      }
-   }
-
-   if (listItems.length > 0) {
-      return Array.from(new Set(listItems)).slice(0, 5);
-   }
-
-   const questionLines = lines
-      .filter(line => line.includes("?"))
-      .map(line => line.replace(/[.;]+$/, ""));
-
-   return Array.from(new Set(questionLines)).slice(0, 5);
 }
 
 export function ChatArea({

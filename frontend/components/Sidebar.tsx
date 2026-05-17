@@ -1,8 +1,11 @@
-import { ChatSession } from "./types";
+import { ChatSession, Connection, DashboardTab, LogEntry } from "./types";
 import { toast } from "sonner";
 import { useMsal } from "@azure/msal-react";
 import { useState } from "react";
+import { AppIcon } from "./AppIcon";
 
+// SidebarIcon is now a thin wrapper over AppIcon for type-safety on sidebar-specific icons.
+// All SVG definitions live in AppIcon.tsx (single source of truth).
 type SidebarIconName =
   | "chevron_left"
   | "unfold_more"
@@ -17,15 +20,9 @@ type SidebarIconName =
   | "logout";
 
 function SidebarIcon({ name, className = "" }: { name: SidebarIconName; className?: string }) {
+  // "unfold_more" and "logout" are sidebar-specific — render inline; all others delegate to AppIcon
   const stroke = "currentColor";
-
   switch (name) {
-    case "chevron_left":
-      return (
-        <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
-          <path d="M15 6L9 12L15 18" stroke={stroke} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      );
     case "unfold_more":
       return (
         <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
@@ -33,70 +30,10 @@ function SidebarIcon({ name, className = "" }: { name: SidebarIconName; classNam
           <path d="M8 15L12 19L16 15" stroke={stroke} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       );
-    case "grid_view":
+    case "chevron_left":
       return (
         <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
-          <rect x="4" y="4" width="7" height="7" stroke={stroke} strokeWidth="2" />
-          <rect x="13" y="4" width="7" height="7" stroke={stroke} strokeWidth="2" />
-          <rect x="4" y="13" width="7" height="7" stroke={stroke} strokeWidth="2" />
-          <rect x="13" y="13" width="7" height="7" stroke={stroke} strokeWidth="2" />
-        </svg>
-      );
-    case "dns":
-      return (
-        <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
-          <ellipse cx="12" cy="6" rx="7" ry="3" stroke={stroke} strokeWidth="2" />
-          <path d="M5 6V12C5 13.7 8.1 15 12 15C15.9 15 19 13.7 19 12V6" stroke={stroke} strokeWidth="2" />
-          <path d="M5 12V18C5 19.7 8.1 21 12 21C15.9 21 19 19.7 19 18V12" stroke={stroke} strokeWidth="2" />
-        </svg>
-      );
-    case "tune":
-      return (
-        <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
-          <path d="M4 7H20" stroke={stroke} strokeWidth="2" strokeLinecap="round" />
-          <path d="M4 12H20" stroke={stroke} strokeWidth="2" strokeLinecap="round" />
-          <path d="M4 17H20" stroke={stroke} strokeWidth="2" strokeLinecap="round" />
-          <circle cx="9" cy="7" r="2" fill="currentColor" />
-          <circle cx="15" cy="12" r="2" fill="currentColor" />
-          <circle cx="11" cy="17" r="2" fill="currentColor" />
-        </svg>
-      );
-    case "database":
-      return (
-        <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
-          <ellipse cx="12" cy="6" rx="7" ry="3" stroke={stroke} strokeWidth="2" />
-          <path d="M5 6V18C5 19.7 8.1 21 12 21C15.9 21 19 19.7 19 18V6" stroke={stroke} strokeWidth="2" />
-          <path d="M5 12C5 13.7 8.1 15 12 15C15.9 15 19 13.7 19 12" stroke={stroke} strokeWidth="2" />
-        </svg>
-      );
-    case "add":
-      return (
-        <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
-          <path d="M12 5V19" stroke={stroke} strokeWidth="2" strokeLinecap="round" />
-          <path d="M5 12H19" stroke={stroke} strokeWidth="2" strokeLinecap="round" />
-        </svg>
-      );
-    case "chevron_right":
-      return (
-        <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
-          <path d="M9 6L15 12L9 18" stroke={stroke} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      );
-    case "edit":
-      return (
-        <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
-          <path d="M4 20H20" stroke={stroke} strokeWidth="2" strokeLinecap="round" />
-          <path d="M6 14L14.5 5.5C15.3 4.7 16.6 4.7 17.4 5.5L18.5 6.6C19.3 7.4 19.3 8.7 18.5 9.5L10 18H6V14Z" stroke={stroke} strokeWidth="2" strokeLinejoin="round" />
-        </svg>
-      );
-    case "delete":
-      return (
-        <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden="true">
-          <path d="M4 7H20" stroke={stroke} strokeWidth="2" strokeLinecap="round" />
-          <path d="M10 11V17" stroke={stroke} strokeWidth="2" strokeLinecap="round" />
-          <path d="M14 11V17" stroke={stroke} strokeWidth="2" strokeLinecap="round" />
-          <path d="M6 7L7 19H17L18 7" stroke={stroke} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-          <path d="M9 7L10 5H14L15 7" stroke={stroke} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M15 6L9 12L15 18" stroke={stroke} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       );
     case "logout":
@@ -108,7 +45,7 @@ function SidebarIcon({ name, className = "" }: { name: SidebarIconName; classNam
         </svg>
       );
     default:
-      return null;
+      return <AppIcon name={name} className={className} />;
   }
 }
 
@@ -119,16 +56,16 @@ interface SidebarProps {
   userName: string;
   currentView: string;
   setCurrentView: (view: string) => void;
-  connections: any[];
-  chatSessions: any[];
-  openTabs: any[];
-  setOpenTabs: React.Dispatch<React.SetStateAction<any[]>>;
+  connections: Connection[];
+  chatSessions: ChatSession[];
+  openTabs: DashboardTab[];
+  setOpenTabs: React.Dispatch<React.SetStateAction<DashboardTab[]>>;
   expandedConns: Record<string, boolean>;
   setExpandedConns: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
   openChat: (chatId: string) => void;
   setEditingConnId: (id: string | null) => void;
-  setConnForm: React.Dispatch<React.SetStateAction<Partial<any>>>;
-  addLog: (level: any, msg: string) => void;
+  setConnForm: React.Dispatch<React.SetStateAction<Partial<Connection>>>;
+  addLog: (level: LogEntry["level"], msg: string) => void;
   createChatSession: (connectionId: string, title?: string) => Promise<ChatSession>;
   deleteChatSession: (sessionId: string) => Promise<void>;
   renameChatSession: (sessionId: string, title: string) => Promise<string>;

@@ -1,11 +1,16 @@
 using Core.Application.Contracts;
+using Infrastructure.AzureOpenAI.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace Infrastructure.AzureOpenAI;
+
+// DTOs are now in Infrastructure.AzureOpenAI.Models namespace
+using Infrastructure.AzureOpenAI.Models;
 
 /// <summary>
 /// Client that invokes agents hosted in Azure AI Foundry.
@@ -35,195 +40,6 @@ public interface IFoundryAgentClient
     Task<ConversationalClassification?> ClassifyMessageAsync(string userId, string message, string? conversationContext = null);
 }
 
-// --- Response DTOs ---
-
-public sealed class SqlPlannerResponse
-{
-    [JsonPropertyName("status")]
-    public string Status { get; set; } = "unsupported";
-
-    [JsonPropertyName("user_question")]
-    public string? UserQuestion { get; set; }
-
-    [JsonPropertyName("intent")]
-    public JsonElement? Intent { get; set; }
-
-    [JsonPropertyName("understanding")]
-    public JsonElement? Understanding { get; set; }
-
-    [JsonPropertyName("data_mapping")]
-    public JsonElement? DataMapping { get; set; }
-
-    [JsonPropertyName("governance")]
-    public GovernanceInfo? Governance { get; set; }
-
-    [JsonPropertyName("sql")]
-    public SqlInfo? Sql { get; set; }
-
-    [JsonPropertyName("clarification")]
-    public ClarificationInfo? Clarification { get; set; }
-}
-
-public sealed class GovernanceInfo
-{
-    [JsonPropertyName("safe_to_execute")]
-    public bool SafeToExecute { get; set; }
-
-    [JsonPropertyName("risk_level")]
-    public string RiskLevel { get; set; } = "low";
-
-    [JsonPropertyName("policy_flags")]
-    public string[]? PolicyFlags { get; set; }
-
-    [JsonPropertyName("approval_required")]
-    public bool ApprovalRequired { get; set; }
-
-    [JsonPropertyName("approval_reason")]
-    public string? ApprovalReason { get; set; }
-}
-
-public sealed class SqlInfo
-{
-    [JsonPropertyName("dialect")]
-    public string Dialect { get; set; } = "tsql";
-
-    [JsonPropertyName("query")]
-    public string Query { get; set; } = string.Empty;
-
-    [JsonPropertyName("explanation")]
-    public string? Explanation { get; set; }
-}
-
-public sealed class ClarificationInfo
-{
-    [JsonPropertyName("question_for_user")]
-    public string? QuestionForUser { get; set; }
-}
-
-public sealed class ResultInterpretation
-{
-    [JsonPropertyName("status")]
-    public string Status { get; set; } = "no_data";
-
-    [JsonPropertyName("question_answered")]
-    public string? QuestionAnswered { get; set; }
-
-    [JsonPropertyName("executive_summary")]
-    public string? ExecutiveSummary { get; set; }
-
-    [JsonPropertyName("key_findings")]
-    public List<KeyFinding>? KeyFindings { get; set; }
-
-    [JsonPropertyName("observations")]
-    public string[]? Observations { get; set; }
-
-    [JsonPropertyName("inferences")]
-    public string[]? Inferences { get; set; }
-
-    [JsonPropertyName("recommendations")]
-    public string[]? Recommendations { get; set; }
-
-    [JsonPropertyName("risk_interpretation")]
-    public RiskInterpretation? Risk { get; set; }
-
-    [JsonPropertyName("limitations")]
-    public string[]? Limitations { get; set; }
-
-    [JsonPropertyName("follow_up_questions")]
-    public string[]? FollowUpQuestions { get; set; }
-
-    [JsonPropertyName("confidence")]
-    public double Confidence { get; set; }
-
-    [JsonPropertyName("response_for_user")]
-    public string? ResponseForUser { get; set; }
-
-    [JsonPropertyName("reason")]
-    public string? Reason { get; set; }
-
-    [JsonPropertyName("warnings")]
-    public string[]? Warnings { get; set; }
-
-    [JsonPropertyName("title")]
-    public string? Title { get; set; }
-
-    [JsonPropertyName("subtitle")]
-    public string? Subtitle { get; set; }
-
-    [JsonPropertyName("suggested_chart")]
-    public SuggestedChart? SuggestedChart { get; set; }
-
-    // Legacy chart response format compatibility
-    [JsonPropertyName("should_render_chart")]
-    public bool? ShouldRenderChart { get; set; }
-
-    [JsonPropertyName("chart_type")]
-    public string? ChartType { get; set; }
-
-    [JsonPropertyName("x_axis")]
-    public string? XAxis { get; set; }
-
-    [JsonPropertyName("y_axis")]
-    public string? YAxis { get; set; }
-
-    [JsonPropertyName("category_field")]
-    public string? CategoryField { get; set; }
-
-    [JsonPropertyName("top_n")]
-    public int? TopN { get; set; }
-}
-
-public sealed class SuggestedChart
-{
-    [JsonPropertyName("type")]
-    public string Type { get; set; } = "line"; // line, bar, pie, area
-
-    [JsonPropertyName("title")]
-    public string Title { get; set; } = string.Empty;
-
-    [JsonPropertyName("description")]
-    public string? Description { get; set; }
-
-    [JsonPropertyName("x_axis_label")]
-    public string? XAxisLabel { get; set; }
-
-    [JsonPropertyName("y_axis_label")]
-    public string? YAxisLabel { get; set; }
-
-    [JsonPropertyName("x_field")]
-    public string? XField { get; set; }
-
-    [JsonPropertyName("y_field")]
-    public string? YField { get; set; }
-
-    [JsonPropertyName("group_by")]
-    public string? GroupBy { get; set; }
-
-    [JsonPropertyName("filtered_rows")]
-    public int? FilteredRowsCount { get; set; }
-}
-
-public sealed class KeyFinding
-{
-    [JsonPropertyName("title")]
-    public string? Title { get; set; }
-
-    [JsonPropertyName("description")]
-    public string? Description { get; set; }
-
-    [JsonPropertyName("evidence")]
-    public string? Evidence { get; set; }
-}
-
-public sealed class RiskInterpretation
-{
-    [JsonPropertyName("level")]
-    public string Level { get; set; } = "unknown";
-
-    [JsonPropertyName("rationale")]
-    public string? Rationale { get; set; }
-}
-
 // --- Implementation ---
 
 public sealed class FoundryAgentClient : IFoundryAgentClient
@@ -244,30 +60,40 @@ public sealed class FoundryAgentClient : IFoundryAgentClient
         AllowTrailingCommas = true
     };
 
+    /// <summary>
+    /// Creates a new FoundryAgentClient using IHttpClientFactory-provided HttpClient
+    /// and strongly-typed configuration via IOptions.
+    /// </summary>
     public FoundryAgentClient(
-        string projectEndpoint,
-        string sqlPlannerAgentReference,
-        string resultInterpreterAgentReference,
-        string conciergeAgentReference,
-        ILogger<FoundryAgentClient> logger,
-        string? apiKey = null,
-        string? tenantId = null)
+        HttpClient httpClient,
+        IOptions<FoundryAgentOptions> options,
+        ILogger<FoundryAgentClient> logger)
     {
         _logger = logger;
-        _endpoint = projectEndpoint.TrimEnd('/');
+
+        var config = options.Value;
+        _endpoint = config.ProjectEndpoint.TrimEnd('/');
+
+        var apiKey = Environment.GetEnvironmentVariable("AzureOpenAI__ApiKey");
         _apiKey = apiKey ?? throw new InvalidOperationException("AzureOpenAI__ApiKey is required for Assistants API.");
 
-        // Agent references are now assistant IDs (asst_...) read from FoundryAgent__*AgentId env vars
-        _sqlPlannerAssistantId = Environment.GetEnvironmentVariable("FoundryAgent__SqlPlannerAgentId")
-            ?? throw new InvalidOperationException("FoundryAgent__SqlPlannerAgentId is required.");
-        _resultInterpreterAssistantId = Environment.GetEnvironmentVariable("FoundryAgent__ResultInterpreterAgentId")
-            ?? throw new InvalidOperationException("FoundryAgent__ResultInterpreterAgentId is required.");
-        _conciergeAssistantId = Environment.GetEnvironmentVariable("FoundryAgent__ConciergeAgentId")
-            ?? throw new InvalidOperationException("FoundryAgent__ConciergeAgentId is required.");
+        _sqlPlannerAssistantId = !string.IsNullOrWhiteSpace(config.SqlPlannerAgentId)
+            ? config.SqlPlannerAgentId
+            : throw new InvalidOperationException("FoundryAgent:SqlPlannerAgentId is required.");
+        _resultInterpreterAssistantId = !string.IsNullOrWhiteSpace(config.ResultInterpreterAgentId)
+            ? config.ResultInterpreterAgentId
+            : throw new InvalidOperationException("FoundryAgent:ResultInterpreterAgentId is required.");
+        _conciergeAssistantId = !string.IsNullOrWhiteSpace(config.ConciergeAgentId)
+            ? config.ConciergeAgentId
+            : throw new InvalidOperationException("FoundryAgent:ConciergeAgentId is required.");
 
-        _httpClient = new HttpClient();
-        _httpClient.DefaultRequestHeaders.Add("api-key", _apiKey);
-        _httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+        // HttpClient is now managed by IHttpClientFactory — no socket exhaustion risk
+        _httpClient = httpClient;
+        _httpClient.DefaultRequestHeaders.TryAddWithoutValidation("api-key", _apiKey);
+        if (!_httpClient.DefaultRequestHeaders.Accept.Any(h => h.MediaType == "application/json"))
+        {
+            _httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+        }
 
         _logger.LogInformation("[AGENT CONFIG] SQL Planner: {Id}", _sqlPlannerAssistantId);
         _logger.LogInformation("[AGENT CONFIG] Result Interpreter: {Id}", _resultInterpreterAssistantId);
@@ -621,17 +447,4 @@ public sealed class FoundryAgentClient : IFoundryAgentClient
 
         return sb.ToString();
     }
-}
-
-// Internal DTO for Concierge parsing
-internal sealed class ConciergeClassification
-{
-    [JsonPropertyName("category")]
-    public string? Category { get; set; }
-
-    [JsonPropertyName("reply")]
-    public string? Reply { get; set; }
-
-    [JsonPropertyName("confidence")]
-    public double Confidence { get; set; } = 1.0;
 }
