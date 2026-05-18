@@ -4,11 +4,7 @@ using System.Text.RegularExpressions;
 
 namespace Infrastructure.AzureOpenAI;
 
-public interface ISqlGenerationService
-{
-    Task<string> GenerateSqlAsync(AnalyticalIntent intent);
-}
-
+using Core.Application.Contracts;
 public sealed class SqlGenerationService : ISqlGenerationService
 {
     private const int MinTop = 1;
@@ -17,8 +13,13 @@ public sealed class SqlGenerationService : ISqlGenerationService
 
     private static readonly string[] AllowedObservationWindows = ["last_7_days", "previous_7_days"];
     private static readonly Regex CodeFenceRegex = new("^```[a-zA-Z]*\\s*|\\s*```$", RegexOptions.Singleline | RegexOptions.Compiled);
-    private static readonly AzureOpenAiChatClient ChatClient = new();
 
+    private readonly IAzureOpenAiChatClient _chatClient;
+
+    public SqlGenerationService(IAzureOpenAiChatClient chatClient)
+    {
+        _chatClient = chatClient;
+    }
     public async Task<string> GenerateSqlAsync(AnalyticalIntent intent)
     {
         var top = intent.Filters.TryGetValue("top", out var topText) && int.TryParse(topText, out var parsedTop)
@@ -92,7 +93,7 @@ ORDER BY metric_date DESC"
         return sql.Trim();
     }
 
-    private static async Task<string?> TryGenerateWithAiAsync(AnalyticalIntent intent, int top)
+    private async Task<string?> TryGenerateWithAiAsync(AnalyticalIntent intent, int top)
     {
         var intentJson = JsonSerializer.Serialize(intent);
         var systemPrompt =
@@ -113,7 +114,7 @@ ORDER BY metric_date DESC"
             $"TOP solicitado: {top}\n" +
             "Para la vista de chargebacks, usa observation_window IN ('last_7_days', 'previous_7_days') para obtener datos.";
 
-        var raw = await ChatClient.CompleteAsync(systemPrompt, userPrompt, jsonResponse: false, maxTokens: 450, temperature: 0.1);
+        var raw = await _chatClient.CompleteAsync(systemPrompt, userPrompt, jsonResponse: false, maxTokens: 450, temperature: 0.1);
         if (string.IsNullOrWhiteSpace(raw))
         {
             return null;

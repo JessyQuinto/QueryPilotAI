@@ -2,11 +2,7 @@ using Microsoft.AspNetCore.DataProtection;
 
 namespace Infrastructure.Sql;
 
-public interface IConnectionSecretProtector
-{
-    string Protect(string plainText);
-    string? Unprotect(string? protectedText);
-}
+using Core.Application.Contracts;
 
 public sealed class ConnectionSecretProtector : IConnectionSecretProtector
 {

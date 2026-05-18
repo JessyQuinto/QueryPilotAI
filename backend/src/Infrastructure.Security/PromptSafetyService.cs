@@ -2,11 +2,6 @@ using Core.Application.Contracts;
 
 namespace Infrastructure.Security;
 
-public interface IPromptSafetyService
-{
-    Task<PromptSafetyResult> AnalyzeAsync(string prompt, string role);
-}
-
 public sealed class PromptSafetyService : IPromptSafetyService
 {
     public Task<PromptSafetyResult> AnalyzeAsync(string prompt, string role)

@@ -25,13 +25,13 @@ var host = new HostBuilder()
         services.AddSingleton<Core.Domain.Policies.ISqlPolicyEngine, Infrastructure.Security.SqlPolicyEngine>();
 
         // --- Database Services ---
-        services.AddSingleton<Infrastructure.Sql.ISqlExecutionService, Infrastructure.Sql.SqlExecutionService>();
-        services.AddSingleton<Infrastructure.Sql.IConnectionSecretProtector, Infrastructure.Sql.ConnectionSecretProtector>();
-        services.AddSingleton<Infrastructure.Sql.IAppDatabaseService, Infrastructure.Sql.AppDatabaseService>();
-        services.AddSingleton<Infrastructure.Sql.ISchemaExtractorService, Infrastructure.Sql.SchemaExtractorService>();
+        services.AddSingleton<Core.Application.Contracts.ISqlExecutionService, Infrastructure.Sql.SqlExecutionService>();
+        services.AddSingleton<Core.Application.Contracts.IConnectionSecretProtector, Infrastructure.Sql.ConnectionSecretProtector>();
+        services.AddSingleton<Core.Application.Contracts.IAppDatabaseService, Infrastructure.Sql.AppDatabaseService>();
+        services.AddSingleton<Core.Application.Contracts.ISchemaExtractorService, Infrastructure.Sql.SchemaExtractorService>();
 
         // --- Security ---
-        services.AddSingleton<Infrastructure.Security.IPromptSafetyService, Infrastructure.Security.PromptSafetyService>();
+        services.AddSingleton<Core.Application.Contracts.IPromptSafetyService, Infrastructure.Security.PromptSafetyService>();
         services.AddSingleton<Core.Domain.Policies.ISqlRewriterService, Infrastructure.Security.SqlRewriterService>();
         services.AddSingleton<Core.Domain.Policies.IBiasDetectorService, Infrastructure.Security.BiasDetectorService>();
 
@@ -49,10 +49,10 @@ var host = new HostBuilder()
         });
 
         // HttpClient lifecycle managed by the framework — prevents socket exhaustion
-        services.AddHttpClient<Infrastructure.AzureOpenAI.IFoundryAgentClient, Infrastructure.AzureOpenAI.FoundryAgentClient>();
+        services.AddHttpClient<Core.Application.Contracts.IFoundryAgentClient, Infrastructure.AzureOpenAI.FoundryAgentClient>();
 
-        // --- Semantic Kernel Integration ---
-        services.AddSemanticKernelServices();
+        // --- Azure OpenAI & Semantic Kernel Integration ---
+        services.AddAzureOpenAiServices();
     })
     .Build();
 

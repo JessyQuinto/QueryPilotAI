@@ -1,7 +1,7 @@
 using Core.Application.Contracts;
 using Core.Domain.Policies;
 using Infrastructure.AzureOpenAI;
-using Infrastructure.AzureOpenAI.Models;
+using Core.Application.Models;
 using Infrastructure.Sql;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.DurableTask;

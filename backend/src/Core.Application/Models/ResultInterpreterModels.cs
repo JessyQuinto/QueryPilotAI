@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace Infrastructure.AzureOpenAI.Models;
+namespace Core.Application.Models;
 
 /// <summary>
 /// Response from the Result Interpreter agent containing findings, charts, and recommendations.
@@ -132,7 +132,7 @@ public sealed class RiskInterpretation
 /// <summary>
 /// Internal DTO for parsing the Concierge agent's classification response.
 /// </summary>
-internal sealed class ConciergeClassification
+public sealed class ConciergeClassification
 {
     [JsonPropertyName("category")]
     public string? Category { get; set; }

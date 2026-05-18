@@ -4,14 +4,6 @@ using Core.Application.Contracts;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Configuration;
 
-public interface ISqlExecutionService
-{
-    Task<List<Dictionary<string, object?>>> ExecuteQueryAsync(string sql, DatabaseConfig? config = null);
-    Task SaveAuditAsync(AuditTrailRecord audit);
-    Task<List<Dictionary<string, object?>>> GetRecentAuditsAsync(int count);
-    Task<List<Dictionary<string, object?>>> GetRecentAuditsByUserAsync(string userId, int count);
-}
-
 public sealed class SqlExecutionService(IConfiguration configuration) : ISqlExecutionService
 {
     private const int QueryCommandTimeoutSeconds = 30;

@@ -6,5 +6,6 @@
     <PackageReference Include="Microsoft.AspNetCore.DataProtection" Version="8.0.12" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="8.0.0" />
     <PackageReference Include="Microsoft.Data.SqlClient" Version="5.2.2" />
+    <PackageReference Include="Npgsql" Version="10.0.2" />
   </ItemGroup>
 </Project>

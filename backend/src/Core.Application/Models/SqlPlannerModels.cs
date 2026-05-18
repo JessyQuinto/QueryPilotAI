@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace Infrastructure.AzureOpenAI.Models;
+namespace Core.Application.Models;
 
 /// <summary>
 /// Response from the SQL Planner agent containing status, SQL, governance, and clarification info.

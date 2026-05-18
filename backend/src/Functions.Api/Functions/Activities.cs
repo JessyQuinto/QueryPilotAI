@@ -1,7 +1,7 @@
 using Core.Application.Contracts;
 using Core.Domain.Policies;
 using Infrastructure.AzureOpenAI;
-using Infrastructure.AzureOpenAI.Models;
+using Core.Application.Models;
 using Infrastructure.Sql;
 using Microsoft.Azure.Functions.Worker;
 using System.Text.Json;
@@ -53,7 +53,7 @@ public class InterpretResultsActivity(IFoundryAgentClient agentClient)
 
 // --- Preserved Activities ---
 
-public class AnalyzePromptSafetyActivity(Infrastructure.Security.IPromptSafetyService safetyService)
+public class AnalyzePromptSafetyActivity(Core.Application.Contracts.IPromptSafetyService safetyService)
 {
     [Function(nameof(AnalyzePromptSafetyActivity))]
     public Task<PromptSafetyResult> Run([ActivityTrigger] QueryRequest request) =>

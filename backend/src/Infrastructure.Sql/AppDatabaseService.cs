@@ -4,99 +4,44 @@ using Microsoft.Extensions.Configuration;
 
 namespace Infrastructure.Sql;
 
-/// <summary>
-/// Manages application-level persistence: user connections, chat sessions, conversation turns.
-/// Operates against insightforge-appdb (distinct from user's analytical database).
-/// </summary>
-public interface IAppDatabaseService
-{
-    // --- User Connections ---
-    Task<Guid> SaveConnectionAsync(UserConnectionRecord connection);
-    Task<UserConnectionRecord?> GetConnectionAsync(Guid connectionId);
-    Task<UserConnectionRecord?> GetConnectionForUserAsync(Guid connectionId, string userId);
-    Task<UserConnectionRecord?> GetConnectionForUsersAsync(Guid connectionId, IReadOnlyCollection<string> userIds);
-    Task<List<UserConnectionRecord>> GetConnectionsByUserAsync(string userId);
-    Task<List<UserConnectionRecord>> GetConnectionsByUserIdsAsync(IReadOnlyCollection<string> userIds);
-    Task UpdateSchemaCacheAsync(Guid connectionId, string schemaJson);
-    Task DeleteConnectionAsync(Guid connectionId, string userId);
-    Task DeleteConnectionAsync(Guid connectionId, IReadOnlyCollection<string> userIds);
-    Task DeleteUserAccountAsync(string userId);
-    Task DeleteUserAccountAsync(IReadOnlyCollection<string> userIds);
-
-    // --- Chat Sessions ---
-    Task<Guid> CreateSessionAsync(Guid id, string userId, Guid? connectionId, string? title);
-    Task<List<ChatSessionRecord>> GetSessionsByUserAsync(string userId);
-    Task<List<ChatSessionRecord>> GetSessionsByUserIdsAsync(IReadOnlyCollection<string> userIds);
-    Task TouchSessionAsync(Guid sessionId);
-    Task<bool> UpdateSessionTitleAsync(Guid sessionId, string title, IReadOnlyCollection<string> userIds);
-    Task DeleteSessionAsync(Guid sessionId, string userId);
-    Task DeleteSessionAsync(Guid sessionId, IReadOnlyCollection<string> userIds);
-
-    // --- Conversation Turns ---
-    Task<Guid> AddTurnAsync(ConversationTurnRecord turn);
-    Task<List<ConversationTurnRecord>> GetRecentTurnsAsync(Guid sessionId, int maxTurns = 10);
-
-    // --- Organizations ---
-    Task<Guid> CreateOrganizationAsync(OrganizationRecord org, string adminUserId);
-    Task<List<OrganizationRecord>> GetOrganizationsByUserIdAsync(string userId);
-    Task<List<OrganizationRecord>> GetOrganizationsByUserIdsAsync(IReadOnlyCollection<string> userIds);
-    Task<int> GetOrganizationCountAsync(string userId);
-    Task DeleteOrganizationAsync(Guid orgId, string userId);
-    Task DeleteOrganizationAsync(Guid orgId, IReadOnlyCollection<string> userIds);
-}
-
-public sealed record OrganizationRecord(
-    Guid Id,
-    string Name,
-    string? Industry,
-    DateTimeOffset CreatedAt);
-
-public sealed record OrganizationMemberRecord(
-    Guid OrganizationId,
-    string UserId,
-    string Role,
-    DateTimeOffset JoinedAt);
-
-
-public sealed record UserConnectionRecord(
-    Guid Id,
-    string UserId,
-    string ConnectionName,
-    string DbType,
-    string Host,
-    string? Port,
-    string DatabaseName,
-    string? AuthType,
-    string? Username,
-    string? EncryptedPassword,
-    string? SchemaCache,
-    DateTimeOffset? SchemaExtractedAt,
-    DateTimeOffset CreatedAt,
-    bool IsActive);
-
-public sealed record ChatSessionRecord(
-    Guid Id,
-    string UserId,
-    Guid? ConnectionId,
-    string? Title,
-    DateTimeOffset CreatedAt,
-    DateTimeOffset LastActivity);
-
-public sealed record ConversationTurnRecord(
-    Guid Id,
-    Guid SessionId,
-    string UserId,
-    string Role,
-    string Question,
-    string? SqlGenerated,
-    string? AgentResponse,
-    string? Summary,
-    string? IntentType,
-    string? Metric,
-    DateTimeOffset CreatedAt);
-
 public sealed class AppDatabaseService : IAppDatabaseService
 {
+    public async Task<bool> TestConnectionAsync(UserConnectionRecord config)
+    {
+        if (config.DbType?.Equals("PostgreSQL", StringComparison.OrdinalIgnoreCase) == true)
+        {
+            var builder = new Npgsql.NpgsqlConnectionStringBuilder
+            {
+                Host = config.Host,
+                Port = int.TryParse(config.Port, out int p) ? p : 5432,
+                Database = config.DatabaseName,
+                Username = config.Username,
+                Password = config.EncryptedPassword,
+                Timeout = 5
+            };
+            using var conn = new Npgsql.NpgsqlConnection(builder.ConnectionString);
+            await conn.OpenAsync();
+            return true;
+        }
+        else if (config.DbType?.Equals("SQLServer", StringComparison.OrdinalIgnoreCase) == true
+              || config.DbType?.Equals("Azure SQL", StringComparison.OrdinalIgnoreCase) == true)
+        {
+            var sqlConfig = new DatabaseConfig(
+                config.DbType,
+                config.Host,
+                config.Port ?? string.Empty,
+                config.DatabaseName,
+                config.Username ?? string.Empty,
+                config.EncryptedPassword ?? string.Empty,
+                config.AuthType);
+
+            using var conn = SqlConnectionFactory.Create(sqlConfig, 5);
+            await conn.OpenAsync();
+            return true;
+        }
+        
+        throw new NotSupportedException("Unsupported database type.");
+    }
     private const string EnsureOrganizationSchemaSql = @"
 IF OBJECT_ID(N'dbo.organizations', N'U') IS NULL
 BEGIN

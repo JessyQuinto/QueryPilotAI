@@ -1,29 +1,41 @@
 using Azure.Core;
 using Azure.Identity;
+using Microsoft.Extensions.Configuration;
+using System.Net.Http;
 using System.Text;
 using System.Text.Json;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Infrastructure.AzureOpenAI;
 
-internal static class JsonDefaults
+public interface IAzureOpenAiChatClient
 {
-    internal static readonly JsonSerializerOptions Options = new()
-    {
-        PropertyNameCaseInsensitive = true,
-        ReadCommentHandling = JsonCommentHandling.Skip,
-        AllowTrailingCommas = true
-    };
+    Task<string?> CompleteAsync(
+        string systemPrompt,
+        string userPrompt,
+        bool jsonResponse,
+        int maxTokens,
+        double temperature);
 }
 
-internal sealed class AzureOpenAiChatClient
+public sealed class AzureOpenAiChatClient : IAzureOpenAiChatClient
 {
     private const string TokenScope = "https://cognitiveservices.azure.com/.default";
     private const string ApiVersion = "2024-10-21";
 
-    private static readonly HttpClient HttpClient = new();
+    private readonly HttpClient _httpClient;
+    private readonly IConfiguration _configuration;
+    
     private static readonly TokenCredential Credential = new DefaultAzureCredential();
     private static readonly SemaphoreSlim TokenSemaphore = new(1, 1);
     private static AccessToken _cachedToken;
+
+    public AzureOpenAiChatClient(HttpClient httpClient, IConfiguration configuration)
+    {
+        _httpClient = httpClient;
+        _configuration = configuration;
+    }
 
     public async Task<string?> CompleteAsync(
         string systemPrompt,
@@ -32,8 +44,8 @@ internal sealed class AzureOpenAiChatClient
         int maxTokens,
         double temperature)
     {
-        var endpoint = GetSetting("AzureOpenAI__Endpoint");
-        var deployment = GetSetting("AzureOpenAI__Deployment");
+        var endpoint = _configuration["AzureOpenAI__Endpoint"];
+        var deployment = _configuration["AzureOpenAI__Deployment"];
 
         if (string.IsNullOrWhiteSpace(endpoint) || string.IsNullOrWhiteSpace(deployment))
         {
@@ -46,10 +58,10 @@ internal sealed class AzureOpenAiChatClient
 
         using var request = new HttpRequestMessage(HttpMethod.Post, requestUri)
         {
-            Content = new StringContent(json, Encoding.UTF8, "application/json")
+            Content = new StringContent(json, new System.Net.Http.Headers.MediaTypeHeaderValue("application/json"))
         };
 
-        var apiKey = GetSetting("AzureOpenAI__ApiKey");
+        var apiKey = _configuration["AzureOpenAI__ApiKey"];
         if (!string.IsNullOrWhiteSpace(apiKey))
         {
             request.Headers.Add("api-key", apiKey);
@@ -65,7 +77,7 @@ internal sealed class AzureOpenAiChatClient
             request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
         }
 
-        using var response = await HttpClient.SendAsync(request);
+        using var response = await _httpClient.SendAsync(request);
         if (!response.IsSuccessStatusCode)
         {
             return null;
@@ -100,7 +112,7 @@ internal sealed class AzureOpenAiChatClient
 
     private static async Task<string?> GetAccessTokenAsync()
     {
-        if (_cachedToken.ExpiresOn > DateTimeOffset.UtcNow.AddMinutes(2))
+        if (_cachedToken.ExpiresOn > System.DateTimeOffset.UtcNow.AddMinutes(2))
         {
             return _cachedToken.Token;
         }
@@ -108,7 +120,7 @@ internal sealed class AzureOpenAiChatClient
         await TokenSemaphore.WaitAsync();
         try
         {
-            if (_cachedToken.ExpiresOn > DateTimeOffset.UtcNow.AddMinutes(2))
+            if (_cachedToken.ExpiresOn > System.DateTimeOffset.UtcNow.AddMinutes(2))
             {
                 return _cachedToken.Token;
             }
@@ -150,9 +162,7 @@ internal sealed class AzureOpenAiChatClient
 
             if (contentElement.ValueKind == JsonValueKind.Array)
             {
-                var parts = contentElement
-                    .EnumerateArray()
-                    .Where(e => e.TryGetProperty("type", out var type) && type.GetString() == "text")
+                var parts = System.Linq.Enumerable.Where(contentElement.EnumerateArray(), e => e.TryGetProperty("type", out var type) && type.GetString() == "text")
                     .Select(e => e.TryGetProperty("text", out var text) ? text.GetString() : null)
                     .Where(s => !string.IsNullOrWhiteSpace(s));
 
@@ -165,11 +175,5 @@ internal sealed class AzureOpenAiChatClient
         {
             return null;
         }
-    }
-
-    private static string? GetSetting(string key)
-    {
-        var value = Environment.GetEnvironmentVariable(key);
-        return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
     }
 }

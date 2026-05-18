@@ -221,7 +221,7 @@ public class ApprovalFunction
     }
 }
 
-public class AuditHistoryFunction(Infrastructure.Sql.ISqlExecutionService sqlExecutionService)
+public class AuditHistoryFunction(Core.Application.Contracts.ISqlExecutionService sqlExecutionService)
 {
     [Function(nameof(AuditHistoryFunction))]
     public async Task<HttpResponseData> Run(

@@ -6,10 +6,7 @@ using System.Text.RegularExpressions;
 
 namespace Infrastructure.AzureOpenAI;
 
-public interface IIntentService
-{
-    Task<AnalyticalIntent> ParseIntentAsync(QueryRequest request, List<ConversationTurn> conversationContext);
-}
+using Core.Application.Contracts;
 
 internal sealed class IntentLlmOutput
 {
@@ -46,8 +43,12 @@ internal sealed class IntentLlmOutput
 
 public sealed class IntentService : IIntentService
 {
-    private static readonly AzureOpenAiChatClient ChatClient = new();
+    private readonly IAzureOpenAiChatClient _chatClient;
 
+    public IntentService(IAzureOpenAiChatClient chatClient)
+    {
+        _chatClient = chatClient;
+    }
     public async Task<AnalyticalIntent> ParseIntentAsync(QueryRequest request, List<ConversationTurn> conversationContext)
     {
         var question = request.Question.Trim();
@@ -156,7 +157,7 @@ public sealed class IntentService : IIntentService
         return intent;
     }
 
-    private static async Task<IntentLlmOutput?> TryInferWithAiAsync(QueryRequest request, List<ConversationTurn> conversationContext)
+    private async Task<IntentLlmOutput?> TryInferWithAiAsync(QueryRequest request, List<ConversationTurn> conversationContext)
     {
         var conversationJson = JsonSerializer.Serialize(conversationContext.TakeLast(6));
         var systemPrompt =
@@ -180,7 +181,7 @@ public sealed class IntentService : IIntentService
             $"Rol: {request.Role}\n" +
             $"Historial JSON: {conversationJson}";
 
-        var aiRaw = await ChatClient.CompleteAsync(systemPrompt, userPrompt, jsonResponse: true, maxTokens: 450, temperature: 0.0);
+        var aiRaw = await _chatClient.CompleteAsync(systemPrompt, userPrompt, jsonResponse: true, maxTokens: 450, temperature: 0.0);
         if (string.IsNullOrWhiteSpace(aiRaw))
         {
             return null;

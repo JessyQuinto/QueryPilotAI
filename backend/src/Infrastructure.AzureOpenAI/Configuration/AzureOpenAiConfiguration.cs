@@ -4,14 +4,18 @@ using Microsoft.SemanticKernel;
 
 namespace Infrastructure.AzureOpenAI.Configuration;
 
-public static class SemanticKernelConfiguration
+public static class AzureOpenAiConfiguration
 {
-    /// <summary>
-    /// Registers Semantic Kernel with Azure OpenAI chat completion and Foundry plugin.
-    /// Reads configuration from environment variables (AzureOpenAI__Endpoint, AzureOpenAI__ApiKey, AzureOpenAI__Deployment).
-    /// </summary>
-    public static IServiceCollection AddSemanticKernelServices(this IServiceCollection services)
+    public static IServiceCollection AddAzureOpenAiServices(this IServiceCollection services)
     {
+        // Internal shared chat client
+        services.AddHttpClient<IAzureOpenAiChatClient, AzureOpenAiChatClient>();
+
+        // Application services
+        services.AddSingleton<Core.Application.Contracts.ISummaryService, SummaryService>();
+        services.AddSingleton<Core.Application.Contracts.ISqlGenerationService, SqlGenerationService>();
+        services.AddSingleton<Core.Application.Contracts.IIntentService, IntentService>();
+
         // Register Foundry Agents Plugin (required dependency for Kernel)
         services.AddSingleton<FoundryAgentsPlugin>();
 
@@ -20,9 +24,9 @@ public static class SemanticKernelConfiguration
         {
             var configuration = serviceProvider.GetRequiredService<Microsoft.Extensions.Configuration.IConfiguration>();
             var endpoint = configuration["AzureOpenAI__Endpoint"] 
-                ?? throw new InvalidOperationException("AzureOpenAI__Endpoint configuration is required");
+                ?? throw new System.InvalidOperationException("AzureOpenAI__Endpoint configuration is required");
             var apiKey = configuration["AzureOpenAI__ApiKey"] 
-                ?? throw new InvalidOperationException("AzureOpenAI__ApiKey configuration is required");
+                ?? throw new System.InvalidOperationException("AzureOpenAI__ApiKey configuration is required");
             var deploymentName = configuration["AzureOpenAI__Deployment"] ?? "gpt-4o-mini";
 
             var kernelBuilder = Kernel.CreateBuilder();
@@ -31,7 +35,7 @@ public static class SemanticKernelConfiguration
                 deploymentName: deploymentName,
                 endpoint: endpoint,
                 apiKey: apiKey,
-                httpClient: serviceProvider.GetRequiredService<HttpClient>()
+                httpClient: serviceProvider.GetRequiredService<System.Net.Http.HttpClient>()
             );
 
             // Register Foundry Agents Plugin

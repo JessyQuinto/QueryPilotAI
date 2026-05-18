@@ -3,14 +3,15 @@ using System.Text.Json;
 
 namespace Infrastructure.AzureOpenAI;
 
-public interface ISummaryService
-{
-    Task<string> SummarizeAsync(string question, string sql, List<Dictionary<string, object?>> rows);
-}
-
+using Core.Application.Contracts;
 public sealed class SummaryService : ISummaryService
 {
-    private static readonly AzureOpenAiChatClient ChatClient = new();
+    private readonly IAzureOpenAiChatClient _chatClient;
+
+    public SummaryService(IAzureOpenAiChatClient chatClient)
+    {
+        _chatClient = chatClient;
+    }
 
     public async Task<string> SummarizeAsync(string question, string sql, List<Dictionary<string, object?>> rows)
     {
@@ -133,7 +134,7 @@ public sealed class SummaryService : ISummaryService
         return JsonSerializer.Serialize(fallbackJson, JsonDefaults.Options);
     }
 
-    private static async Task<string?> TrySummarizeWithAiAsync(string question, string sql, List<Dictionary<string, object?>> rows)
+    private async Task<string?> TrySummarizeWithAiAsync(string question, string sql, List<Dictionary<string, object?>> rows)
     {
         var sampleRows = rows.Take(25).ToList();
         var rowsJson = JsonSerializer.Serialize(sampleRows);
@@ -179,7 +180,7 @@ public sealed class SummaryService : ISummaryService
             $"Muestra JSON (max 25 filas): {rowsJson}\n" +
             "Genera el JSON estructurado respondiendo a la pregunta de manera profesional.";
 
-        var raw = await ChatClient.CompleteAsync(systemPrompt, userPrompt, jsonResponse: true, maxTokens: 1200, temperature: 0.2);
+        var raw = await _chatClient.CompleteAsync(systemPrompt, userPrompt, jsonResponse: true, maxTokens: 1200, temperature: 0.2);
         if (string.IsNullOrWhiteSpace(raw))
         {
             return null;

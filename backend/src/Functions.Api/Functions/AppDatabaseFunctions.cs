@@ -162,38 +162,15 @@ public class AppDatabaseFunctions(
             }
 
             bool success = false;
-            string error = "Unsupported database type.";
+            string error = "Failed to connect to the database.";
 
-            if (config.DbType?.Equals("PostgreSQL", StringComparison.OrdinalIgnoreCase) == true)
+            try
             {
-                var builder = new Npgsql.NpgsqlConnectionStringBuilder
-                {
-                    Host = config.Host,
-                    Port = int.TryParse(config.Port, out int p) ? p : 5432,
-                    Database = config.DatabaseName,
-                    Username = config.Username,
-                    Password = config.EncryptedPassword,
-                    Timeout = 5
-                };
-                using var conn = new Npgsql.NpgsqlConnection(builder.ConnectionString);
-                await conn.OpenAsync();
-                success = true;
+                success = await appDb.TestConnectionAsync(config);
             }
-            else if (config.DbType?.Equals("SQLServer", StringComparison.OrdinalIgnoreCase) == true
-                  || config.DbType?.Equals("Azure SQL", StringComparison.OrdinalIgnoreCase) == true)
+            catch (Exception innerEx)
             {
-                var sqlConfig = new DatabaseConfig(
-                    config.DbType,
-                    config.Host,
-                    config.Port ?? string.Empty,
-                    config.DatabaseName,
-                    config.Username ?? string.Empty,
-                    config.EncryptedPassword ?? string.Empty,
-                    config.AuthType);
-
-                using var conn = SqlConnectionFactory.Create(sqlConfig, 5);
-                await conn.OpenAsync();
-                success = true;
+                error = innerEx.Message;
             }
 
             if (!success)
