@@ -104,7 +104,7 @@ export function ChatArea({
 
                            return (
                                         <div key={msg.id} className={`flex gap-5 w-full ${msg.role === 'user' ? 'flex-row-reverse text-right' : ''}`}>
-                              <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-sm ${msg.role === 'user' ? 'bg-indigo-500/80 text-white ring-1 ring-indigo-300/40' : 'surface-base text-zinc-300 ring-1 ring-zinc-700/70'}`}>
+                              <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-sm ${msg.role === 'user' ? 'bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-indigo-500/20' : 'bg-zinc-800/80 backdrop-blur-sm text-zinc-300 ring-1 ring-white/10'}`}>
                       {msg.role === 'user' ? (
                           <span className="text-[14px] font-bold">U</span>
                       ) : (
@@ -121,19 +121,19 @@ export function ChatArea({
                             {msg.role === 'user' ? 'You' : 'QueryPilot AI'}
                         </div>
                         {msg.role === 'user' ? (
-                        <div className="bg-[#a78bfa] text-black rounded-2xl rounded-tr-sm px-5 py-3.5 text-[14px] font-mono leading-relaxed shadow-sm">
+                        <div className="bg-gradient-to-r from-indigo-500 to-violet-600 text-white rounded-2xl rounded-tr-sm px-5 py-3.5 text-[14.5px] leading-relaxed shadow-md shadow-indigo-500/10">
                                 {msg.content}
                             </div>
                         ) : (
-                        <div className="rounded-2xl p-6 text-[13px] leading-relaxed mono-theme text-[#d1cdbd] shadow-sm space-y-5 relative overflow-hidden group border border-[#333333] bg-[#0a0a0a] mono-enter">
+                        <div className="rounded-2xl p-6 text-[14px] leading-relaxed text-zinc-200 shadow-xl space-y-5 relative overflow-hidden group border border-white/5 bg-zinc-900/60 backdrop-blur-xl mono-enter ring-1 ring-white/5">
                                 {msg.status === 'Running' && (
-                                    <div className="absolute top-0 left-0 w-full h-1 bg-zinc-100 overflow-hidden">
-                                        <div className="h-full bg-zinc-900 rounded-full w-1/3 animate-[slide_1.5s_ease-in-out_infinite]"></div>
+                                    <div className="absolute top-0 left-0 w-full h-[2px] bg-zinc-800/50 overflow-hidden">
+                                        <div className="h-full bg-gradient-to-r from-transparent via-indigo-400 to-transparent w-1/2 animate-[slide_1.5s_ease-in-out_infinite]"></div>
                                     </div>
                                 )}
 
                                 {msg.content && !msg.insight && !isClarificationQuestionnaire && (
-                                   <div className="text-[14px] text-[#f4f0e6] font-mono leading-relaxed whitespace-pre-wrap break-words mono-type">
+                                   <div className="text-[14.5px] text-zinc-100 leading-relaxed whitespace-pre-wrap break-words mono-type">
                                       {msg.content}
                                    </div>
                                 )}
@@ -152,7 +152,7 @@ export function ChatArea({
                                 )}
 
                                 {isClarificationQuestionnaire && (
-                                   <div className="rounded-2xl border border-sky-500/30 bg-sky-500/5 p-4 space-y-4">
+                                   <div className="rounded-2xl border border-sky-500/20 bg-sky-500/5 backdrop-blur-md p-5 space-y-4 shadow-inner">
                                       <div className="flex items-start gap-3">
                                          <div className="mt-0.5 h-7 w-7 rounded-full bg-sky-500/20 text-sky-300 flex items-center justify-center shrink-0">
                                             <AppIcon name="help" className="h-[16px] w-[16px]" />
@@ -193,18 +193,18 @@ export function ChatArea({
                                 )}
                                 
                                 {msg.status === 'PendingApproval' && (
-                                   <div className="mb-6 p-5 bg-amber-50 rounded-xl border border-amber-200 space-y-4">
+                                   <div className="mb-6 p-5 bg-amber-950/30 backdrop-blur-md rounded-2xl border border-amber-500/30 space-y-4 shadow-lg">
                                        <div className="flex items-start gap-3">
-                                          <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center shrink-0 mt-0.5">
-                                             <AppIcon name="security" className="h-[18px] w-[18px] text-amber-600" />
+                                          <div className="w-8 h-8 rounded-full bg-amber-500/20 flex items-center justify-center shrink-0 mt-0.5">
+                                             <AppIcon name="security" className="h-[18px] w-[18px] text-amber-400" />
                                           </div>
                                           <div>
-                                             <h4 className="text-[14px] font-bold text-amber-900">Action Required: Privacy/Security Review</h4>
-                                             <p className="text-[13px] text-amber-800/80 mt-1 font-medium">{msg.content}</p>
+                                             <h4 className="text-[14px] font-bold text-amber-400">Action Required: Privacy/Security Review</h4>
+                                             <p className="text-[13px] text-amber-200/80 mt-1 font-medium">{msg.content}</p>
                                           </div>
                                        </div>
                                        
-                                       <div className="bg-zinc-950 rounded-lg p-4 border border-amber-200/70 font-mono text-[12px] text-zinc-200 overflow-auto whitespace-pre-wrap max-h-[200px] shadow-inner font-medium">
+                                       <div className="bg-black/40 rounded-xl p-4 border border-amber-500/20 font-mono text-[12px] text-zinc-300 overflow-auto whitespace-pre-wrap max-h-[200px] shadow-inner font-medium">
                                           {msg.sql}
                                        </div>
 
@@ -237,18 +237,18 @@ export function ChatArea({
                                    <div className="text-[15px] font-medium">{msg.insight}</div>
                                       
                                       {msg.results && msg.results.length > 0 && msg.results[0] && (
-                                            <div className="overflow-x-auto border border-zinc-700 rounded-xl bg-zinc-950 shadow-sm mt-4">
+                                            <div className="overflow-x-auto border border-white/10 rounded-xl bg-black/40 backdrop-blur-md shadow-lg mt-4">
                                             <table className="min-w-full text-left text-[13px] border-collapse">
-                                               <thead className="bg-zinc-900 border-b border-zinc-700 text-zinc-400 uppercase tracking-widest text-[11px] font-bold">
+                                               <thead className="bg-white/5 border-b border-white/10 text-zinc-400 uppercase tracking-widest text-[11px] font-semibold">
                                                   <tr>
                                                      {Object.keys(msg.results[0]).map(key => (
                                                         <th key={key} className="px-5 py-3 whitespace-nowrap">{key}</th>
                                                      ))}
                                                   </tr>
                                                </thead>
-                                               <tbody className="divide-y divide-zinc-800 font-mono">
+                                               <tbody className="divide-y divide-white/5 font-mono text-[12px]">
                                                   {msg.results.slice(0, 10).map((row, idx) => (
-                                                     <tr key={idx} className="hover:bg-zinc-900 transition-colors">
+                                                     <tr key={idx} className="hover:bg-white/5 transition-colors">
                                                         {Object.values(row).map((val: any, j) => (
                                                            <td key={j} className="px-5 py-3 text-zinc-200 truncate max-w-[200px]">
                                                               {typeof val === 'object' ? JSON.stringify(val) : String(val)}
@@ -272,7 +272,7 @@ export function ChatArea({
                                                <AppIcon name="chevron_right" className="h-[16px] w-[16px] transition-transform group-open/code:rotate-90" />
                                                View Generated SQL
                                             </summary>
-                                             <div className="mt-3 p-4 bg-[#111111] text-[#f4f0e6] rounded-xl font-mono text-[13px] overflow-auto whitespace-pre-wrap shadow-inner leading-relaxed">
+                                             <div className="mt-3 p-4 bg-black/50 text-indigo-200 border border-white/5 rounded-xl font-mono text-[13px] overflow-auto whitespace-pre-wrap shadow-inner leading-relaxed">
                                                {msg.sql}
                                             </div>
                                          </details>
@@ -353,7 +353,7 @@ export function ChatArea({
               <button 
                  onClick={handleSubmit} 
                  disabled={!input.trim() || isTyping}
-                 className="absolute right-2 top-2 p-2.5 rounded-xl bg-[#a78bfa] text-black disabled:bg-[#111111] disabled:text-[#8a8a8a] transition-all active:scale-95 disabled:active:scale-100 shadow-sm flex items-center justify-center">
+                 className="absolute right-2 top-2 p-2.5 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-600 text-white disabled:from-zinc-800 disabled:to-zinc-800 disabled:text-zinc-500 transition-all active:scale-95 disabled:active:scale-100 shadow-md flex items-center justify-center">
                 {isTyping ? (
                    <div className="w-[18px] h-[18px] border-2 border-zinc-300 border-t-zinc-600 rounded-full animate-spin"></div>
                 ) : (

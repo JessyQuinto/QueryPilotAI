@@ -56,70 +56,81 @@ export function TerminalLogs({ terminalLogs, isOpen, setIsOpen }: TerminalLogsPr
   }, [terminalLogs, isOpen]);
 
   return (
-    <div className={`h-[100dvh] transition-all duration-500 ease-in-out border-l border-[#333333] flex relative z-40 bg-black ${isOpen ? 'w-[450px]' : 'w-[50px]'}`}>
+    <div className={`h-[100dvh] transition-all duration-500 ease-in-out border-l border-white/5 flex relative z-40 bg-black/95 backdrop-blur-2xl ${isOpen ? 'w-[450px]' : 'w-[50px]'}`}>
       
       {/* VERTICAL BAR (Lambda Style) */}
       <div 
         onClick={() => setIsOpen(!isOpen)}
-        className="w-[50px] h-full flex flex-col items-center py-8 cursor-pointer hover:bg-[#111111] transition-colors border-r border-[#222222] select-none"
+        className="w-[50px] h-full flex flex-col items-center py-8 cursor-pointer hover:bg-white/5 transition-colors border-r border-white/5 select-none"
       >
-        <TerminalIcon name={isOpen ? "dock_to_right" : "side_navigation"} className="h-[22px] w-[22px] text-[#a78bfa] mb-12" />
+        <TerminalIcon name={isOpen ? "dock_to_right" : "side_navigation"} className="h-[22px] w-[22px] text-indigo-400 mb-12" />
         
         <div className="flex-1 flex items-center justify-center">
-            <h3 className="whitespace-nowrap text-[11px] font-mono tracking-[0.3em] uppercase font-black text-[#a3a3a3] transform rotate-180" style={{ writingMode: 'vertical-rl' }}>
-               // TERMINAL DE AGENTE <span className="text-[#f4f0e6]">INSIGHTFORGE</span> //
+            <h3 className="whitespace-nowrap text-[11px] font-mono tracking-[0.3em] uppercase font-black text-indigo-200/50 transform rotate-180" style={{ writingMode: 'vertical-rl' }}>
+               // SYSTEM TERMINAL <span className="text-indigo-400">PIPELINE</span> //
             </h3>
         </div>
 
-        <div className="mt-auto flex flex-col items-center gap-4 text-[#444444]">
-            <span className="text-[10px] font-mono font-bold">V0.2</span>
-            <div className="w-1 h-1 rounded-none bg-[#a78bfa] animate-pulse"></div>
+        <div className="mt-auto flex flex-col items-center gap-4 text-indigo-500/50">
+            <span className="text-[10px] font-mono font-bold">SYS_01</span>
+            <div className="w-1 h-1 rounded-full bg-indigo-500 animate-pulse shadow-[0_0_8px_rgba(99,102,241,0.8)]"></div>
         </div>
       </div>
 
       {/* TERMINAL CONTENT (Sliding out) */}
       {isOpen && (
         <div className="flex-1 flex flex-col overflow-hidden animate-in fade-in slide-in-from-right-4 duration-500">
-           <div className="flex items-center justify-between px-6 py-5 border-b border-[#222222] bg-black ">
+           <div className="flex items-center justify-between px-6 py-4 border-b border-white/5 bg-black/50">
                 <div className="flex items-center gap-3">
-                    <div className="w-2 h-2 rounded-none bg-[#a78bfa]"></div>
-                    <h3 className="text-[12px] font-black tracking-widest uppercase text-[#f4f0e6] font-mono ls-1">System Logs</h3>
+                    <div className="w-2 h-2 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.8)]"></div>
+                    <h3 className="text-[12px] font-black tracking-widest uppercase text-indigo-100 font-mono">System Logs & Pipeline</h3>
                 </div>
-                <button onClick={() => setIsOpen(false)} className="text-[#a3a3a3] hover:text-white transition-colors">
+                <button onClick={() => setIsOpen(false)} className="text-zinc-500 hover:text-white transition-colors">
                   <TerminalIcon name="close" className="h-[18px] w-[18px]" />
                 </button>
            </div>
            
-           <div className="flex-1 overflow-y-auto p-6 font-mono text-[11px] space-y-4 leading-relaxed bg-[#050505]" ref={terminalRef}>
+           <div className="flex-1 overflow-y-auto p-6 font-mono text-[11px] space-y-4 leading-relaxed bg-[#020202]" ref={terminalRef}>
                {terminalLogs.length === 0 && (
-                   <div className="text-[#444444] italic font-medium">// Waiting for agent activity...</div>
+                   <div className="text-zinc-600 italic font-medium">// Waiting for system activity...</div>
                )}
-               {terminalLogs.map((log) => (
+               {terminalLogs.map((log) => {
+                   const isOrchestrator = log.message.includes('[Orchestrator]');
+                   const cleanMessage = log.message.replace('[Orchestrator]', '').trim();
+                   
+                   return (
                    <div key={log.id} className="flex flex-col gap-1.5 animate-in fade-in duration-300">
-                       <span className="text-[#555555] font-mono text-[10px] tabular-nums font-bold">
-                          {new Date(log.timestamp).toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })}.{new Date(log.timestamp).getMilliseconds()}
+                       <span className="text-zinc-600 font-mono text-[10px] tabular-nums font-medium">
+                          {new Date(log.timestamp).toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })}.{new Date(log.timestamp).getMilliseconds().toString().padStart(3, '0')}
                        </span>
                        <div className="flex items-start gap-3">
-                           <span className={`px-2 py-0.5 rounded-none text-[9px] font-black tracking-tighter uppercase ${
-                               log.level === 'INFO' ? 'bg-[#a78bfa]/10 text-[#a78bfa]' : 
-                               log.level === 'SUCCESS' ? 'bg-emerald-500/10 text-emerald-400' : 
-                               log.level === 'ERROR' ? 'bg-red-900/100/10 text-red-400' : 
-                               log.level === 'WARN' ? 'bg-amber-500/10 text-amber-400' : 
-                               'bg-zinc-800 text-zinc-400'
+                           <span className={`px-2 py-0.5 rounded text-[9px] font-black tracking-tighter uppercase border ${
+                               isOrchestrator ? 'bg-cyan-900/20 text-cyan-400 border-cyan-500/20' :
+                               log.level === 'INFO' ? 'bg-indigo-900/20 text-indigo-400 border-indigo-500/20' : 
+                               log.level === 'SUCCESS' ? 'bg-emerald-900/20 text-emerald-400 border-emerald-500/20' : 
+                               log.level === 'ERROR' ? 'bg-red-900/20 text-red-400 border-red-500/20' : 
+                               log.level === 'WARN' ? 'bg-amber-900/20 text-amber-400 border-amber-500/20' : 
+                               'bg-zinc-900 text-zinc-400 border-zinc-800'
                            }`}>
-                               {log.level}
+                               {isOrchestrator ? 'PIPELINE' : log.level}
                            </span>
-                           <span className={`break-words tracking-tight font-medium ${log.level === 'ERROR' ? 'text-red-300/80' : log.level === 'WARN' ? 'text-amber-300/80' : 'text-[#dfe2eb]'}`}>
-                               {log.message}
+                           <span className={`break-words tracking-tight ${
+                               isOrchestrator ? 'text-cyan-300/90 font-semibold' :
+                               log.level === 'ERROR' ? 'text-red-300/80' : 
+                               log.level === 'WARN' ? 'text-amber-300/80' : 
+                               log.level === 'SUCCESS' ? 'text-emerald-300/90' :
+                               'text-zinc-300'
+                           }`}>
+                               {cleanMessage}
                            </span>
                        </div>
                    </div>
-               ))}
+               )})}
                
                {/* Animated Cursor */}
-               <div className="flex items-center gap-2 text-[#a78bfa] mt-6 opacity-80">
+               <div className="flex items-center gap-2 text-indigo-500 mt-6 opacity-80">
                 <TerminalIcon name="terminal" className="h-[14px] w-[14px]" />
-                  <div className="w-2 h-4 bg-[#a78bfa] animate-pulse"></div>
+                  <div className="w-2 h-4 bg-indigo-500 animate-pulse"></div>
                </div>
            </div>
         </div>
